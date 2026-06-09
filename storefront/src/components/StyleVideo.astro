@@ -1,0 +1,105 @@
+---
+import type { StyleVideo } from '../lib/types';
+
+interface Props {
+  video: StyleVideo;
+}
+const { video } = Astro.props;
+
+// Lite-embed facade: show a thumbnail + play button, only load the heavy
+// YouTube iframe on click. Keeps the home page fast (Emil: don't ship JS/iframes
+// the user hasn't asked for). Privacy via youtube-nocookie.
+const id = video.youtube_id!;
+const thumb = `https://i.ytimg.com/vi/${id}/maxresdefault.jpg`;
+const thumbFallback = `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+---
+
+<section class="border-b border-[var(--color-border)] bg-[var(--color-primary)]">
+  <div class="container-content py-14 lg:py-16">
+    <div class="grid items-center gap-8 lg:grid-cols-[1fr_1.4fr] lg:gap-12">
+      <div class="max-w-md text-white">
+        <span
+          class="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-medium tracking-wide text-white/90"
+        >
+          <span class="relative flex h-2 w-2">
+            <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--color-accent)] opacity-75"></span>
+            <span class="relative inline-flex h-2 w-2 rounded-full bg-[var(--color-accent)]"></span>
+          </span>
+          New every day
+        </span>
+        <h2 class="mt-4 text-2xl text-white sm:text-3xl">{video.title}</h2>
+        {
+          video.subtitle && (
+            <p class="mt-3 text-[0.95rem] leading-relaxed text-white/70">{video.subtitle}</p>
+          )
+        }
+        <p class="mt-5 text-sm text-white/55">
+          Watch our latest pairing idea, then shop the fabrics to recreate the look.
+        </p>
+      </div>
+
+      <div
+        id="style-video"
+        class="group relative aspect-video w-full cursor-pointer overflow-hidden rounded-[var(--radius-lg)] bg-black shadow-[var(--shadow-lg)]"
+        data-video-id={id}
+        role="button"
+        tabindex="0"
+        aria-label={`Play video: ${video.title}`}
+      >
+        <img
+          src={thumb}
+          alt={video.title}
+          width="1280"
+          height="720"
+          loading="lazy"
+          decoding="async"
+          class="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
+          onerror={`this.onerror=null;this.src='${thumbFallback}'`}
+        />
+        <div class="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" aria-hidden="true"></div>
+        <span
+          class="absolute left-1/2 top-1/2 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 shadow-lg transition-transform duration-200 ease-out group-hover:scale-105 group-active:scale-95"
+          aria-hidden="true"
+        >
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="var(--color-primary)" class="ml-1">
+            <path d="M8 5v14l11-7z"></path>
+          </svg>
+        </span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  // Swap the facade for the real iframe on first interaction.
+  function mountStyleVideo() {
+    const el = document.getElementById('style-video');
+    if (!el) return;
+    const load = () => {
+      const id = el.dataset.videoId;
+      if (!id) return;
+      const iframe = document.createElement('iframe');
+      iframe.className = 'absolute inset-0 h-full w-full';
+      iframe.src = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0`;
+      iframe.title = 'Today’s style suggestion';
+      iframe.allow =
+        'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+      iframe.allowFullscreen = true;
+      el.replaceChildren(iframe);
+      el.style.cursor = 'default';
+    };
+    el.addEventListener('click', load, { once: true });
+    el.addEventListener(
+      'keydown',
+      (e: KeyboardEvent) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          load();
+        }
+      },
+      { once: true }
+    );
+  }
+  mountStyleVideo();
+  document.addEventListener('astro:page-load', mountStyleVideo);
+</script>

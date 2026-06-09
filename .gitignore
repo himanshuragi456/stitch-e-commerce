@@ -1,0 +1,39 @@
+# ── Dependencies ─────────────────────────────────────────────
+node_modules/
+vendor/
+
+# ── Env & secrets (never commit) ─────────────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+
+# ── Build output ─────────────────────────────────────────────
+dist/
+.astro/
+storefront/.astro/
+public/build/
+
+# ── Laravel runtime ──────────────────────────────────────────
+backend/storage/*.key
+backend/storage/framework/cache/*
+backend/storage/framework/sessions/*
+backend/storage/framework/views/*
+backend/storage/logs/*
+backend/bootstrap/cache/*
+backend/public/storage
+backend/.phpunit.result.cache
+backend/database/*.sqlite
+
+# keep empty runtime dirs tracked
+!backend/storage/framework/cache/.gitignore
+!backend/storage/framework/sessions/.gitignore
+!backend/storage/framework/views/.gitignore
+
+# ── OS / editor ──────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.log
+.vscode/*
+!.vscode/extensions.json
+.idea/

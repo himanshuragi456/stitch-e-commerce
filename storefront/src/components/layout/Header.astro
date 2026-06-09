@@ -1,0 +1,44 @@
+---
+import Logo from './Logo.astro';
+import type { Category } from '../../lib/types';
+
+interface Props {
+  categories: Category[];
+}
+const { categories } = Astro.props;
+const navCats = categories.slice(0, 5);
+---
+
+<header
+  class="sticky top-0 z-40 border-b border-[var(--color-border)] bg-[var(--color-bg)]/85 backdrop-blur-md"
+>
+  <div class="container-content flex h-[72px] items-center justify-between gap-6">
+    <Logo />
+
+    <nav class="hidden items-center gap-7 lg:flex" aria-label="Primary">
+      {
+        navCats.map((c) => (
+          <a
+            href={`/category/${c.slug}`}
+            class="group relative text-sm font-medium text-[var(--color-ink)] transition-colors hover:text-[var(--color-primary)]"
+          >
+            {c.name}
+            <span class="absolute -bottom-1 left-0 h-px w-0 bg-[var(--color-accent)] transition-[width] duration-200 ease-out group-hover:w-full" />
+          </a>
+        ))
+      }
+    </nav>
+
+    <div class="flex items-center gap-1">
+      <a href="/search" class="btn btn-ghost h-10 w-10 !p-0" aria-label="Search">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+      </a>
+      <a href="/account" class="btn btn-ghost h-10 w-10 !p-0" aria-label="Account">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+      </a>
+      <a href="/cart" class="btn btn-ghost relative h-10 w-10 !p-0" aria-label="Cart">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="21" r="1"></circle><circle cx="19" cy="21" r="1"></circle><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"></path></svg>
+      </a>
+    </div>
+  </div>
+</header>

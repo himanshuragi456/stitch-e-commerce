@@ -1,0 +1,67 @@
+---
+/**
+ * Shree Krishna Collection logo. Custom peacock-feather "eye" mark (Krishna
+ * association) — an almond outline in indigo with a gold droplet and a fine
+ * center line — paired with a Fraunces wordmark. No emoji, pure SVG.
+ *
+ * Props:
+ *  - variant: 'full' (mark + wordmark) | 'mark' (just the mark)
+ *  - mono: render in a single colour (for dark/photo backgrounds)
+ */
+interface Props {
+  variant?: 'full' | 'mark';
+  mono?: 'none' | 'light' | 'dark';
+  class?: string;
+}
+const { variant = 'full', mono = 'none', class: className = '' } = Astro.props;
+
+const indigo = mono === 'light' ? '#FFFFFF' : mono === 'dark' ? '#1A1A1A' : '#1E3A5F';
+const gold = mono === 'none' ? '#C9A227' : indigo;
+---
+
+<a href="/" class={`inline-flex items-center gap-2.5 ${className}`} aria-label="Shree Krishna Collection — home">
+  <svg
+    width="34"
+    height="34"
+    viewBox="0 0 34 34"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    aria-hidden="true"
+    class="shrink-0"
+  >
+    <!-- feather eye: almond outline -->
+    <path
+      d="M17 2C17 2 30 8.5 30 17C30 25.5 17 32 17 32C17 32 4 25.5 4 17C4 8.5 17 2 17 2Z"
+      stroke={indigo}
+      stroke-width="2"
+      fill="none"
+    />
+    <!-- inner droplet -->
+    <path
+      d="M17 9C17 9 23 12.5 23 17.5C23 21.4 17 25 17 25C17 25 11 21.4 11 17.5C11 12.5 17 9 17 9Z"
+      fill={gold}
+      opacity={mono === 'none' ? '1' : '0.85'}
+    />
+    <!-- center quill line -->
+    <line x1="17" y1="3" x2="17" y2="31" stroke={indigo} stroke-width="1" opacity="0.45" />
+  </svg>
+
+  {
+    variant === 'full' && (
+      <span class="flex flex-col leading-none">
+        <span
+          class="font-[var(--font-heading)] text-[1.05rem] font-semibold tracking-tight"
+          style={`color:${indigo}`}
+        >
+          Shree Krishna
+        </span>
+        <span
+          class="text-[0.62rem] font-medium uppercase tracking-[0.28em]"
+          style={`color:${mono === 'none' ? '#6B6B6B' : indigo}`}
+        >
+          Collection
+        </span>
+      </span>
+    )
+  }
+</a>
