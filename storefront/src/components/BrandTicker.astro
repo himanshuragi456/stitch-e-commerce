@@ -1,0 +1,108 @@
+---
+// Infinite marquee of the mill / fabric brands we stock. Rendered as styled
+// wordmarks (not logo images) so it always renders in the static build with no
+// external assets, and stays crisp at any size. The track is duplicated once so
+// the CSS translate(-50%) loop is seamless.
+interface Props {
+  brands?: string[];
+  label?: string;
+}
+
+const {
+  brands = [
+    'Raymond',
+    "Siyaram's",
+    'Vimal',
+    'Grasim',
+    'Arvind',
+    'Donear',
+    'Gwalior Suitings',
+    'Linen Club',
+    'Mafatlal',
+    'OCM',
+  ],
+  label = 'Woven with cloth from India’s finest mills',
+} = Astro.props;
+
+// Duplicate for a gapless loop.
+const track = [...brands, ...brands];
+---
+
+<section
+  class="brand-ticker border-b border-[var(--color-border)] bg-[var(--color-surface)]"
+  aria-label="Fabric brands we stock"
+>
+  <div class="container-content py-7">
+    <p class="mb-5 text-center text-[11px] font-medium uppercase tracking-[0.24em] text-[var(--color-ink-muted)]">
+      {label}
+    </p>
+
+    <div class="ticker-mask relative overflow-hidden" aria-hidden="true">
+      <div class="ticker-track flex w-max items-center">
+        {track.map((brand) => (
+          <span class="ticker-item font-[var(--font-heading)] text-xl font-medium tracking-tight text-[var(--color-ink)]/70 sm:text-2xl">
+            {brand}
+          </span>
+        ))}
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .ticker-mask {
+    /* Fade the edges so brands slide in/out of a soft gradient, not a hard cut. */
+    -webkit-mask-image: linear-gradient(
+      to right,
+      transparent,
+      #000 8%,
+      #000 92%,
+      transparent
+    );
+    mask-image: linear-gradient(
+      to right,
+      transparent,
+      #000 8%,
+      #000 92%,
+      transparent
+    );
+  }
+
+  .ticker-track {
+    /* Duplicated content → translate half the width for a seamless loop. */
+    animation: ticker-scroll 38s linear infinite;
+    will-change: transform;
+  }
+
+  .ticker-item {
+    padding-inline: 2.25rem;
+    white-space: nowrap;
+    transition: color 200ms ease, opacity 200ms ease;
+  }
+
+  /* Pause + spotlight the hovered wordmark. */
+  .brand-ticker:hover .ticker-track {
+    animation-play-state: paused;
+  }
+  .ticker-item:hover {
+    color: var(--color-primary);
+    opacity: 1;
+  }
+
+  @keyframes ticker-scroll {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ticker-track {
+      animation: none;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+  }
+</style>

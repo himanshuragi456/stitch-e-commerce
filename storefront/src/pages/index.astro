@@ -2,6 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import ProductCard from '../components/product/ProductCard.astro';
 import StyleVideo from '../components/StyleVideo.astro';
+import BrandTicker from '../components/BrandTicker.astro';
 import { api } from '../lib/api';
 import { heroImage, fabricFallback, CATEGORY_IMAGES, STORY_IMAGE } from '../lib/images';
 import type { Category, ProductListItem, PublicSettings } from '../lib/types';
@@ -236,6 +237,9 @@ const storyImage = STORY_IMAGE;
       </div>
     </div>
   </section>
+
+  <!-- Fabric brand ticker -->
+  <BrandTicker />
 
   <!-- YouTube style suggestion -->
   {styleVideo?.enabled && styleVideo.youtube_id && <StyleVideo video={styleVideo} />}
