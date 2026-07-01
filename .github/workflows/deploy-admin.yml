@@ -1,0 +1,71 @@
+name: Deploy Admin
+
+# The admin is a Vite + React SPA that fetches all data from the API at RUNTIME
+# (unlike the storefront, it bakes nothing at build time). So it only needs to
+# rebuild when the admin code itself changes — no repository_dispatch hook.
+on:
+  push:
+    branches: [main]
+    paths: ["admin/**", ".github/workflows/deploy-admin.yml"]
+  workflow_dispatch:
+
+concurrency:
+  group: admin-deploy
+  cancel-in-progress: true
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: admin
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: admin/package-lock.json
+
+      - run: npm ci
+
+      - name: Build
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_APP_NAME: ${{ secrets.VITE_APP_NAME }}
+        run: npm run build
+
+      - name: Write SPA-fallback + HTTPS + caching .htaccess into dist/
+        run: |
+          cat > dist/.htaccess <<'HTACCESS'
+          <IfModule mod_rewrite.c>
+              RewriteEngine On
+              RewriteCond %{HTTPS} off
+              RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
+
+              # SPA fallback: serve index.html for any path that isn't a real file/dir
+              RewriteCond %{REQUEST_FILENAME} !-f
+              RewriteCond %{REQUEST_FILENAME} !-d
+              RewriteRule ^ index.html [L]
+          </IfModule>
+
+          <IfModule mod_expires.c>
+              ExpiresActive On
+              ExpiresByType text/css "access plus 1 year"
+              ExpiresByType application/javascript "access plus 1 year"
+              ExpiresByType image/svg+xml "access plus 1 year"
+          </IfModule>
+          HTACCESS
+
+      - name: Deploy dist/ to server via rsync over SSH
+        uses: burnett01/rsync-deployments@7.0.2
+        with:
+          # --delete is safe: the admin subdomain docroot holds ONLY static build
+          # output (no Laravel public/, no storage symlink).
+          switches: -avz --delete
+          path: admin/dist/
+          remote_path: ${{ secrets.ADMIN_REMOTE_DIR }}
+          remote_host: ${{ secrets.SSH_HOST }}
+          remote_user: ${{ secrets.SSH_USER }}
+          remote_key: ${{ secrets.SSH_DEPLOY_KEY }}

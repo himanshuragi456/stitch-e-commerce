@@ -1,0 +1,82 @@
+name: Deploy Storefront
+
+# The storefront is static (Astro `output: 'static'`) and bakes catalog data at build
+# time. It must rebuild when:
+#   - storefront code changes (push to main touching storefront/**)
+#   - an admin edits the catalog → backend fires a GitHub repository_dispatch
+#     (event_type: rebuild-storefront) via StorefrontRebuildService
+#   - manually (workflow_dispatch)
+on:
+  push:
+    branches: [main]
+    paths: ["storefront/**", ".github/workflows/deploy-storefront.yml"]
+  workflow_dispatch:
+  repository_dispatch:
+    types: [rebuild-storefront]
+
+# Collapse a burst of admin edits into a single fresh build: a newer run cancels the
+# in-flight stale one. (We have no queue/cron on the host to debounce server-side.)
+concurrency:
+  group: storefront-deploy
+  cancel-in-progress: true
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: storefront
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: storefront/package-lock.json
+
+      - run: npm ci
+
+      - name: Build (fetches catalog from the live API at build time)
+        env:
+          PUBLIC_API_URL: ${{ secrets.PUBLIC_API_URL }}
+          PUBLIC_SITE_URL: ${{ secrets.PUBLIC_SITE_URL }}
+          PUBLIC_RAZORPAY_KEY_ID: ${{ secrets.PUBLIC_RAZORPAY_KEY_ID }}
+        run: npm run build
+
+      - name: Write HTTPS + caching .htaccess into dist/
+        # rsync --delete would wipe a manually-placed .htaccess on the server, so
+        # the workflow must (re)create it on every deploy.
+        working-directory: storefront
+        run: |
+          cat > dist/.htaccess <<'HTACCESS'
+          <IfModule mod_rewrite.c>
+              RewriteEngine On
+              RewriteCond %{HTTPS} off
+              RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
+          </IfModule>
+
+          <IfModule mod_expires.c>
+              ExpiresActive On
+              ExpiresByType text/css "access plus 1 year"
+              ExpiresByType application/javascript "access plus 1 year"
+              ExpiresByType image/svg+xml "access plus 1 year"
+              ExpiresByType image/webp "access plus 1 month"
+              ExpiresByType image/jpeg "access plus 1 month"
+              ExpiresByType image/png "access plus 1 month"
+          </IfModule>
+          HTACCESS
+
+      - name: Deploy dist/ to server via rsync over SSH
+        uses: burnett01/rsync-deployments@7.0.2
+        with:
+          # -a archive, -z compress, --delete so removed pages disappear.
+          # Safe here: the storefront subdomain docroot contains ONLY static build
+          # output (no Laravel public/, no storage symlink), so --delete cannot wipe
+          # anything we need. (Never use --delete against a Laravel public/.)
+          switches: -avz --delete
+          path: storefront/dist/
+          remote_path: ${{ secrets.STOREFRONT_REMOTE_DIR }}
+          remote_host: ${{ secrets.SSH_HOST }}
+          remote_user: ${{ secrets.SSH_USER }}
+          remote_key: ${{ secrets.SSH_DEPLOY_KEY }}
