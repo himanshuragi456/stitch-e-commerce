@@ -2,7 +2,10 @@
 // See docs/30-STOREFRONT-PLAN.md §3 and the contract in docs/50-API-CONTRACT.md.
 
 import type {
+  Cart,
   Category,
+  CustomerOrder,
+  CustomerProfile,
   Paginated,
   ProductDetail,
   ProductListItem,
@@ -16,7 +19,7 @@ const BASE_URL = (
 
 type QueryParams = Record<string, string | number | undefined>;
 
-async function get<T>(path: string, params?: QueryParams): Promise<T> {
+async function get<T>(path: string, params?: QueryParams, token?: string | null): Promise<T> {
   const url = new URL(`${BASE_URL}${path}`);
   if (params) {
     for (const [key, value] of Object.entries(params)) {
@@ -24,14 +27,84 @@ async function get<T>(path: string, params?: QueryParams): Promise<T> {
     }
   }
 
-  const res = await fetch(url.toString(), {
-    headers: { Accept: 'application/json' },
-  });
+  const headers: Record<string, string> = { Accept: 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch(url.toString(), { headers });
 
   if (!res.ok) {
     throw new Error(`API ${res.status} ${res.statusText} for ${url.pathname}`);
   }
 
+  return res.json() as Promise<T>;
+}
+
+async function post<T>(
+  path: string,
+  body: unknown,
+  opts: { cartToken?: string; authToken?: string } = {}
+): Promise<T> {
+  const headers: Record<string, string> = {
+    Accept: 'application/json',
+    'Content-Type': 'application/json',
+  };
+  if (opts.cartToken) headers['X-Cart-Token'] = opts.cartToken;
+  if (opts.authToken) headers['Authorization'] = `Bearer ${opts.authToken}`;
+
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({})) as Record<string, unknown>;
+    throw new Error((data.message as string) || `Error ${res.status}`);
+  }
+
+  if (res.status === 204) return undefined as T;
+  return res.json() as Promise<T>;
+}
+
+async function patch<T>(
+  path: string,
+  body: unknown,
+  opts: { cartToken?: string; authToken?: string } = {}
+): Promise<T> {
+  const headers: Record<string, string> = {
+    Accept: 'application/json',
+    'Content-Type': 'application/json',
+  };
+  if (opts.cartToken) headers['X-Cart-Token'] = opts.cartToken;
+  if (opts.authToken) headers['Authorization'] = `Bearer ${opts.authToken}`;
+
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method: 'PATCH',
+    headers,
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({})) as Record<string, unknown>;
+    throw new Error((data.message as string) || `Error ${res.status}`);
+  }
+
+  return res.json() as Promise<T>;
+}
+
+async function del<T = void>(path: string, opts: { cartToken?: string; authToken?: string } = {}): Promise<T> {
+  const headers: Record<string, string> = { Accept: 'application/json' };
+  if (opts.cartToken) headers['X-Cart-Token'] = opts.cartToken;
+  if (opts.authToken) headers['Authorization'] = `Bearer ${opts.authToken}`;
+
+  const res = await fetch(`${BASE_URL}${path}`, { method: 'DELETE', headers });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({})) as Record<string, unknown>;
+    throw new Error((data.message as string) || `Error ${res.status}`);
+  }
+
+  if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
 }
 
@@ -62,5 +135,82 @@ export const api = {
   suggestions: (id: string) =>
     get<{ data: ProductListItem[] }>(`/products/${id}/suggestions`).then((r) => r.data),
 
-  publicSettings: () => get<Wrapped<PublicSettings>>('/settings/public').then((r) => r.data),
+  publicSettings: () => get<Wrapped<PublicSettings>>('/site-config').then((r) => r.data),
+
+  // ── Cart ────────────────────────────────────────────────────────────────────
+
+  cart: {
+    get: (cartToken: string) =>
+      fetch(`${BASE_URL}/cart`, {
+        headers: { Accept: 'application/json', 'X-Cart-Token': cartToken },
+      }).then<Wrapped<Cart>>((r) => r.json()),
+
+    addItem: (cartToken: string, body: { product_id: string; length_metres: string; quantity: number }) =>
+      post<Wrapped<Cart>>('/cart/items', body, { cartToken }),
+
+    updateItem: (cartToken: string, itemId: string, quantity: number) =>
+      patch<Wrapped<Cart>>(`/cart/items/${itemId}`, { quantity }, { cartToken }),
+
+    removeItem: (cartToken: string, itemId: string) =>
+      del<Wrapped<Cart>>(`/cart/items/${itemId}`, { cartToken }),
+
+    applyCoupon: (cartToken: string, code: string) =>
+      post<Wrapped<Cart>>('/cart/coupon', { code }, { cartToken }),
+
+    removeCoupon: (cartToken: string) =>
+      del<Wrapped<Cart>>('/cart/coupon', { cartToken }),
+  },
+
+  // ── Checkout ────────────────────────────────────────────────────────────────
+
+  checkout: {
+    place: (
+      cartToken: string,
+      body: {
+        email: string;
+        phone: string;
+        shipping_address: {
+          name: string;
+          line1: string;
+          line2?: string;
+          city: string;
+          state: string;
+          pincode: string;
+          phone: string;
+        };
+        notes?: string;
+      },
+      authToken?: string | null
+    ) => post<Wrapped<CustomerOrder>>('/checkout', body, { cartToken, authToken: authToken ?? undefined }),
+  },
+
+  // ── Customer auth & account ─────────────────────────────────────────────────
+
+  customer: {
+    register: (body: { name: string; email: string; password: string; password_confirmation: string }) =>
+      post<{ token: string; data: CustomerProfile }>('/auth/register', body),
+
+    login: (body: { email: string; password: string }) =>
+      post<{ token: string; data: CustomerProfile }>('/auth/login', body),
+
+    logout: (authToken: string) =>
+      post<void>('/auth/logout', {}, { authToken }),
+
+    me: (authToken: string) =>
+      get<Wrapped<CustomerProfile>>('/account/me', undefined, authToken).then((r) => r.data),
+
+    orders: (authToken: string, page = 1) =>
+      get<Paginated<CustomerOrder>>('/account/orders', { page }, authToken),
+
+    order: (authToken: string, id: string) =>
+      get<Wrapped<CustomerOrder>>(`/account/orders/${id}`, undefined, authToken).then((r) => r.data),
+
+    updateProfile: (authToken: string, body: { name?: string; email?: string }) =>
+      patch<Wrapped<CustomerProfile>>('/account/me', body, { authToken }).then((r) => r.data),
+
+    updatePassword: (
+      authToken: string,
+      body: { current_password: string; password: string; password_confirmation: string }
+    ) => patch<void>('/account/password', body, { authToken }),
+  },
 };

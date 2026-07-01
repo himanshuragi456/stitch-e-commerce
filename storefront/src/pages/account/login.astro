@@ -1,0 +1,17 @@
+---
+/**
+ * /account/login — convenience alias that renders AccountPage with register tab pre-selected
+ * based on the ?tab= query param. The actual logic lives in the island.
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import AccountPageIsland from '../../components/islands/AccountPage';
+---
+
+<BaseLayout title="Sign in — Shree Krishna Collection" noindex>
+  <div class="container-content max-w-md py-10 lg:py-16">
+    <h1 class="mb-8 font-[var(--font-heading)] text-3xl font-semibold text-center">
+      My account
+    </h1>
+    <AccountPageIsland client:load />
+  </div>
+</BaseLayout>

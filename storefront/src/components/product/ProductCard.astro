@@ -1,15 +1,19 @@
 ---
 import type { ProductListItem } from '../../lib/types';
 import { formatPaise } from '../../lib/format';
-import { fabricFallback } from '../../lib/images';
+import { fabricFallback, fabricBase } from '../../lib/images';
 
 interface Props {
   product: ProductListItem;
 }
 const { product } = Astro.props;
 const img = product.primary_image;
-// Real fabric photo fallback keyed by product, so cards never look empty.
-const imgSrc = img?.thumb_url ?? fabricFallback(product.slug, { w: 500, h: 500 });
+const hasRealImage = !!img;
+// If no real photo but we have a color_hex, use the white fabric base + tint overlay.
+// Otherwise fall back to a random fabric swatch keyed by slug.
+const useTint = !hasRealImage && !!product.color_hex;
+const imgSrc = img?.thumb_url
+  ?? (useTint ? fabricBase({ w: 500, h: 500 }) : fabricFallback(product.slug, { w: 500, h: 500 }));
 const imgAlt = img?.alt ?? `${product.name} — fabric swatch`;
 const hasDiscount =
   product.compare_at_per_metre_paise &&
@@ -34,6 +38,14 @@ const discountPct = hasDiscount
       decoding="async"
       class="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
     />
+
+    {useTint && (
+      <div
+        class="pointer-events-none absolute inset-0 mix-blend-multiply"
+        style={`background-color:${product.color_hex};opacity:0.72`}
+        aria-hidden="true"
+      />
+    )}
 
     <span
       class="absolute left-3 top-3 rounded-full bg-[var(--color-bg)]/90 px-2.5 py-1 text-[0.68rem] font-medium uppercase tracking-wide text-[var(--color-primary)] backdrop-blur-sm"

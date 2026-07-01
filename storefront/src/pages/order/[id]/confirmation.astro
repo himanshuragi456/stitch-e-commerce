@@ -1,0 +1,16 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import OrderConfirmation from '../../../components/islands/OrderConfirmation';
+
+export function getStaticPaths() {
+  return [];
+}
+
+const { id } = Astro.params;
+---
+
+<BaseLayout title="Order confirmed — Shree Krishna Collection" noindex>
+  <div class="container-content py-10 lg:py-16">
+    <OrderConfirmation orderId={id ?? ''} client:load />
+  </div>
+</BaseLayout>

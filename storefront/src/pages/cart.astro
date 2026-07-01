@@ -1,0 +1,11 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import CartPageIsland from '../components/islands/CartPage';
+---
+
+<BaseLayout title="Cart — Shree Krishna Collection">
+  <div class="container-content py-10 lg:py-16">
+    <h1 class="mb-8 font-[var(--font-heading)] text-3xl font-semibold">Shopping cart</h1>
+    <CartPageIsland client:load />
+  </div>
+</BaseLayout>

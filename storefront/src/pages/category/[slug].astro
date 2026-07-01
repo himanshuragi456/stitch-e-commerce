@@ -1,0 +1,134 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Breadcrumbs from '../../components/layout/Breadcrumbs.astro';
+import FilterSort from '../../components/islands/FilterSort';
+import { api } from '../../lib/api';
+import { fabricFallback, CATEGORY_IMAGES } from '../../lib/images';
+import type { Category, ProductListItem, PaginationMeta } from '../../lib/types';
+
+export async function getStaticPaths() {
+  const categories = await api.categories();
+  return categories
+    .filter((c) => c.is_active)
+    .map((c) => ({ params: { slug: c.slug } }));
+}
+
+const { slug } = Astro.params;
+
+let category: Category | null = null;
+let products: ProductListItem[] = [];
+let meta: PaginationMeta = { current_page: 1, last_page: 1, per_page: 20, total: 0 };
+
+try {
+  [category, { data: products, meta }] = await Promise.all([
+    api.category(slug),
+    api.products({ category: slug, per_page: 20, sort: 'newest' }),
+  ]);
+} catch (err) {
+  console.warn(`[category/${slug}] failed to load:`, (err as Error).message);
+}
+
+// Derive filter options from initial product set for the filter panel.
+const materials = [...new Set(products.map((p) => p.material).filter(Boolean) as string[])].sort();
+const colors = [...new Set(products.map((p) => p.color).filter(Boolean) as string[])].sort();
+
+const title = category?.meta_title ?? `${category?.name ?? slug} — Shree Krishna Collection`;
+const description =
+  category?.meta_description ??
+  `Shop ${category?.name ?? slug} fabric by the metre. ${meta.total} premium unstitched cloth options, priced per metre.`;
+
+const heroSrc = category?.image_url ?? CATEGORY_IMAGES[slug] ?? fabricFallback(slug, { w: 1400, h: 560 });
+
+// BreadcrumbList JSON-LD
+const breadcrumbJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Home', item: Astro.site?.href },
+    {
+      '@type': 'ListItem',
+      position: 2,
+      name: category?.name ?? slug,
+      item: new URL(`/category/${slug}`, Astro.site).href,
+    },
+  ],
+};
+---
+
+<BaseLayout {title} {description} image={heroSrc}>
+  <script
+    is:inline
+    type="application/ld+json"
+    slot="head"
+    set:html={JSON.stringify(breadcrumbJsonLd)}
+  />
+
+  <!-- Category hero banner -->
+  <section class="relative overflow-hidden border-b border-[var(--color-border)]">
+    <div class="pointer-events-none absolute inset-0 -z-10">
+      <img
+        src={heroSrc}
+        alt={`${category?.name ?? slug} fabric`}
+        width="1400"
+        height="560"
+        loading="eager"
+        fetchpriority="high"
+        class="h-full w-full object-cover"
+      />
+      <div
+        class="absolute inset-0 bg-gradient-to-r from-[var(--color-primary)]/85 via-[var(--color-primary)]/55 to-[var(--color-primary)]/20"
+        aria-hidden="true"
+      />
+    </div>
+
+    <div class="container-content py-14 sm:py-20">
+      <div class="max-w-lg">
+        <span
+          class="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-medium tracking-wide text-white/80 backdrop-blur-sm"
+        >
+          <span class="h-1.5 w-1.5 rounded-full bg-[var(--color-accent)]"></span>
+          Unstitched · By the metre
+        </span>
+        <h1 class="mt-4 text-3xl leading-tight text-white sm:text-5xl">
+          {category?.name ?? slug}
+        </h1>
+        {
+          category?.description && (
+            <p class="mt-3 text-sm leading-relaxed text-white/75 sm:text-base">
+              {category.description}
+            </p>
+          )
+        }
+        <p class="mt-3 text-sm text-white/60">
+          {meta.total} {meta.total === 1 ? 'fabric' : 'fabrics'} available
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <Breadcrumbs crumbs={[{ label: category?.name ?? slug }]} />
+
+  <!-- Product grid with client-side filters -->
+  <section class="container-content pb-20 pt-4">
+    {
+      products.length === 0 && !category ? (
+        <div class="py-24 text-center">
+          <p class="text-xl font-medium text-[var(--color-ink)]">Category not found</p>
+          <p class="mt-2 text-sm text-[var(--color-ink-muted)]">
+            The page you're looking for doesn't exist.
+          </p>
+          <a href="/" class="btn btn-primary mt-6">Back to home</a>
+        </div>
+      ) : (
+        <FilterSort
+          client:load
+          categorySlug={slug}
+          initialProducts={products}
+          initialMeta={meta}
+          materials={materials}
+          colors={colors}
+        />
+      )
+    }
+  </section>
+</BaseLayout>

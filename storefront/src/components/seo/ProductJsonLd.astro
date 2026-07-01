@@ -1,0 +1,75 @@
+---
+// Emits schema.org Product JSON-LD for a product detail page.
+// Drives Google rich results: price range, availability, breadcrumbs.
+import type { ProductDetail } from '../../lib/types';
+
+interface Props {
+  product: ProductDetail;
+  canonicalUrl: string;
+  breadcrumbs: Array<{ name: string; url: string }>;
+}
+
+const { product, canonicalUrl, breadcrumbs } = Astro.props;
+
+// Compute price range across offered lengths.
+const lengths = product.lengths ?? [];
+const prices = lengths
+  .filter((l) => l.purchasable)
+  .map((l) => l.unit_price_paise / 100);
+const lowPrice = prices.length > 0 ? Math.min(...prices) : product.price_per_metre_paise / 100;
+const highPrice = prices.length > 0 ? Math.max(...prices) : product.price_per_metre_paise / 100;
+
+const primaryImage = product.images?.find((i) => i.is_primary) ?? product.images?.[0] ?? null;
+
+const productJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Product',
+  name: product.name,
+  description: product.description
+    ? product.description.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+    : `${product.name} — premium unstitched cloth, sold by the metre.`,
+  image: product.images?.map((i) => i.url) ?? (primaryImage ? [primaryImage.url] : []),
+  sku: (product as ProductDetail & { sku?: string }).sku ?? undefined,
+  brand: { '@type': 'Brand', name: 'Shree Krishna Collection' },
+  offers: {
+    '@type': 'AggregateOffer',
+    priceCurrency: 'INR',
+    lowPrice: lowPrice.toFixed(2),
+    highPrice: highPrice.toFixed(2),
+    offerCount: lengths.length > 0 ? lengths.length : 1,
+    availability:
+      product.in_stock && parseFloat(product.stock_metres) > 0
+        ? 'https://schema.org/InStock'
+        : 'https://schema.org/OutOfStock',
+    url: canonicalUrl,
+  },
+  url: canonicalUrl,
+};
+
+const breadcrumbJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Home', item: new URL('/', canonicalUrl).href },
+    ...breadcrumbs.map((b, i) => ({
+      '@type': 'ListItem',
+      position: i + 2,
+      name: b.name,
+      item: b.url,
+    })),
+  ],
+};
+---
+
+<script
+  is:inline
+  type="application/ld+json"
+  slot="head"
+  set:html={JSON.stringify(productJsonLd)}
+/>
+<script
+  is:inline
+  type="application/ld+json"
+  slot="head"
+  set:html={JSON.stringify(breadcrumbJsonLd)}
+/>

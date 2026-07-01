@@ -1,0 +1,10 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import AccountPageIsland from '../../components/islands/AccountPage';
+---
+
+<BaseLayout title="My account — Shree Krishna Collection" noindex>
+  <div class="container-content max-w-3xl py-10 lg:py-16">
+    <AccountPageIsland client:load />
+  </div>
+</BaseLayout>

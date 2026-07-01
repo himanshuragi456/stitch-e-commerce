@@ -1,0 +1,189 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Breadcrumbs from '../../components/layout/Breadcrumbs.astro';
+import ProductCard from '../../components/product/ProductCard.astro';
+import ProductGallery from '../../components/islands/ProductGallery';
+import LengthSelector from '../../components/islands/LengthSelector';
+import ProductJsonLd from '../../components/seo/ProductJsonLd.astro';
+import { api } from '../../lib/api';
+import { fabricFallback, fabricBase } from '../../lib/images';
+import type { ProductDetail } from '../../lib/types';
+
+export async function getStaticPaths() {
+  // Fetch all products (paginate through to get every slug).
+  const first = await api.products({ per_page: 100 });
+  let all = first.data;
+  for (let p = 2; p <= first.meta.last_page; p++) {
+    const page = await api.products({ per_page: 100, page: p });
+    all = all.concat(page.data);
+  }
+  return all.map((p) => ({ params: { slug: p.slug } }));
+}
+
+const { slug } = Astro.params;
+
+let product: ProductDetail | null = null;
+
+try {
+  product = await api.product(slug);
+  // Suggestions: prefer embedded, fall back to separate endpoint.
+  if (!product.suggestions || product.suggestions.length === 0) {
+    try {
+      product.suggestions = await api.suggestions(product.id);
+    } catch {
+      product.suggestions = [];
+    }
+  }
+} catch (err) {
+  console.warn(`[product/${slug}] failed to load:`, (err as Error).message);
+}
+
+const primaryImage =
+  product?.images?.find((i) => i.is_primary) ??
+  product?.images?.[0] ??
+  null;
+
+// Use the white fabric base (tintable) when the product has a color_hex, else random swatch.
+const fallbackSrc = product?.color_hex
+  ? fabricBase({ w: 720, h: 900 })
+  : fabricFallback(slug, { w: 720, h: 900 });
+const ogImage = primaryImage?.url ?? fallbackSrc;
+
+const title =
+  product?.meta_title ?? `${product?.name ?? slug} — Shree Krishna Collection`;
+const description =
+  product?.meta_description ??
+  `Buy ${product?.name ?? slug} fabric by the metre. Premium unstitched cloth from Shree Krishna Collection.`;
+
+const canonicalUrl = new URL(`/product/${slug}`, Astro.site).href;
+const categoryName = product?.category?.name;
+const categorySlug = product?.category?.slug;
+
+const intendedUseBadge = product?.intended_use
+  ? product.intended_use.charAt(0).toUpperCase() + product.intended_use.slice(1)
+  : null;
+---
+
+<BaseLayout {title} {description} image={ogImage} type="product">
+  {
+    product && (
+      <ProductJsonLd
+        slot="head"
+        {product}
+        {canonicalUrl}
+        breadcrumbs={[
+          ...(categorySlug ? [{ name: categoryName ?? categorySlug, url: new URL(`/category/${categorySlug}`, Astro.site).href }] : []),
+          { name: product.name, url: canonicalUrl },
+        ]}
+      />
+    )
+  }
+
+  <Breadcrumbs
+    crumbs={[
+      ...(categorySlug ? [{ label: categoryName ?? categorySlug, href: `/category/${categorySlug}` }] : []),
+      { label: product?.name ?? slug },
+    ]}
+  />
+
+  {
+    !product ? (
+      <div class="container-content py-24 text-center">
+        <p class="text-xl font-medium text-[var(--color-ink)]">Product not found</p>
+        <a href="/" class="btn btn-primary mt-6">Back to home</a>
+      </div>
+    ) : (
+      <div class="container-content pb-20 pt-4">
+        {/* Product layout: gallery + info */}
+        <div class="grid gap-8 lg:grid-cols-[1fr_480px] lg:gap-14 xl:grid-cols-[1fr_520px]">
+
+          {/* Gallery */}
+          <div class="lg:sticky lg:top-24 lg:self-start">
+            <ProductGallery
+              client:load
+              images={product.images ?? []}
+              productName={product.name}
+              fallbackSrc={fallbackSrc}
+              colorHex={product.color_hex}
+            />
+          </div>
+
+          {/* Info column */}
+          <div class="flex flex-col gap-5">
+            {/* Badges */}
+            <div class="flex flex-wrap items-center gap-2">
+              {intendedUseBadge && (
+                <span class="rounded-full bg-[var(--color-surface)] border border-[var(--color-border)] px-3 py-1 text-xs font-medium text-[var(--color-primary)]">
+                  {intendedUseBadge}
+                </span>
+              )}
+              {!product.in_stock && (
+                <span class="rounded-full bg-[var(--color-error)]/10 border border-[var(--color-error)]/20 px-3 py-1 text-xs font-medium text-[var(--color-error)]">
+                  Out of stock
+                </span>
+              )}
+            </div>
+
+            {/* Product name */}
+            <h1 class="font-[var(--font-heading)] text-2xl leading-snug sm:text-3xl">
+              {product.name}
+            </h1>
+
+            {/* Meta row: material · color · pattern */}
+            <p class="text-sm text-[var(--color-ink-muted)]">
+              {[product.material, product.pattern].filter(Boolean).join(' · ')}
+              {product.color && (
+                <span class="ml-2 inline-flex items-center gap-1.5">
+                  {product.color_hex && (
+                    <span
+                      class="inline-block h-3 w-3 rounded-full border border-[var(--color-border)]"
+                      style={`background:${product.color_hex}`}
+                      aria-hidden="true"
+                    />
+                  )}
+                  {product.color}
+                </span>
+              )}
+            </p>
+
+            <hr class="border-[var(--color-border)]" />
+
+            {/* Length selector + add to cart (React island) */}
+            <LengthSelector client:load {product} />
+
+            {/* Description */}
+            {product.description && (
+              <div>
+                <hr class="mb-5 border-[var(--color-border)]" />
+                <h2 class="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--color-ink-muted)]">
+                  About this fabric
+                </h2>
+                <div
+                  class="prose prose-sm max-w-none text-[var(--color-ink-muted)] [&_a]:text-[var(--color-primary)]"
+                  set:html={product.description}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Pairs well with */}
+        {product.suggestions && product.suggestions.length > 0 && (
+          <section class="mt-20">
+            <div class="mb-6">
+              <h2 class="text-xl sm:text-2xl">Pairs well with</h2>
+              <p class="mt-1 text-sm text-[var(--color-ink-muted)]">
+                Complete the look — curated cloth that complements this fabric.
+              </p>
+            </div>
+            <div class="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 lg:grid-cols-4">
+              {product.suggestions.slice(0, 4).map((s) => (
+                <ProductCard product={s} />
+              ))}
+            </div>
+          </section>
+        )}
+      </div>
+    )
+  }
+</BaseLayout>

@@ -9,23 +9,23 @@
  | Tailwind v4: tokens declared here become utilities (bg-primary, font-heading…).
  */
 @theme {
-  /* Brand */
-  --color-primary: #1e3a5f;
-  --color-primary-hover: #16304f;
-  --color-accent: #c9a227;
-  --color-accent-hover: #b08f1e;
+  /* Brand — Emerald Ivory */
+  --color-primary: #1a5c45;
+  --color-primary-hover: #134a37;
+  --color-accent: #e8a000;
+  --color-accent-hover: #cc8e00;
 
   /* Surfaces */
-  --color-bg: #ffffff;
-  --color-surface: #f7f6f3;
-  --color-border: #e5e3de;
+  --color-bg: #faf8f3;
+  --color-surface: #f0ede4;
+  --color-border: #ddd9ce;
 
   /* Ink */
-  --color-ink: #1a1a1a;
-  --color-ink-muted: #6b6b6b;
+  --color-ink: #1c1a14;
+  --color-ink-muted: #6b6355;
 
   /* Status */
-  --color-success: #2e7d5b;
+  --color-success: #1a5c45;
   --color-error: #c0392b;
   --color-warning: #b7791f;
   --color-info: #2b6cb0;
@@ -40,9 +40,9 @@
   --radius-lg: 12px;
 
   /* Shadows — subtle, premium */
-  --shadow-sm: 0 1px 2px rgba(26, 26, 26, 0.05);
-  --shadow: 0 1px 3px rgba(26, 26, 26, 0.08), 0 1px 2px rgba(26, 26, 26, 0.04);
-  --shadow-lg: 0 8px 30px rgba(26, 26, 26, 0.1);
+  --shadow-sm: 0 1px 2px rgba(26, 92, 69, 0.06);
+  --shadow: 0 1px 3px rgba(26, 92, 69, 0.1), 0 1px 2px rgba(26, 92, 69, 0.05);
+  --shadow-lg: 0 8px 30px rgba(26, 92, 69, 0.13);
 
   /* Layout */
   --max-width-content: 1280px;
@@ -97,8 +97,8 @@
     font-weight: 600;
     font-size: 0.9375rem;
     line-height: 1;
-    padding: 0 1.25rem;
-    height: 2.75rem;
+    padding: 0.625rem 1.25rem;
+    min-height: 2.75rem;
     transition:
       transform 160ms var(--ease-out-strong),
       background-color 160ms ease,
@@ -148,6 +148,43 @@
       padding-inline: 2rem;
     }
   }
+}
+
+
+/* ── DEEP INDIGO + GOLD — dark navy-indigo + electric indigo primary + gold accent ── */
+[data-theme="midnight"] {
+  --color-primary: #4f46e5;
+  --color-primary-hover: #4338ca;
+  --color-accent: #f0c040;
+  --color-accent-hover: #d4a928;
+  --color-bg: #0d0e1a;
+  --color-surface: #13142a;
+  --color-border: #232542;
+  --color-ink: #eeeef8;
+  --color-ink-muted: #8b8db8;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.4);
+  --shadow: 0 1px 3px rgba(0,0,0,0.5), 0 1px 2px rgba(0,0,0,0.3);
+  --shadow-lg: 0 8px 30px rgba(0,0,0,0.6);
+  background-color: var(--color-bg);
+  color: var(--color-ink);
+}
+
+/* ── TERRACOTTA SAND — warm sand + burnt terracotta + turmeric ── */
+[data-theme="terracotta"] {
+  --color-primary: #c0562a;
+  --color-primary-hover: #a84820;
+  --color-accent: #d4a84b;
+  --color-accent-hover: #bc943c;
+  --color-bg: #fdf6ed;
+  --color-surface: #f5ead8;
+  --color-border: #e8d8c0;
+  --color-ink: #2a1f14;
+  --color-ink-muted: #7a6250;
+  --shadow-sm: 0 1px 2px rgba(42,31,20,0.06);
+  --shadow: 0 1px 3px rgba(42,31,20,0.1), 0 1px 2px rgba(42,31,20,0.05);
+  --shadow-lg: 0 8px 30px rgba(192,86,42,0.14);
+  background-color: var(--color-bg);
+  color: var(--color-ink);
 }
 
 /* Respect reduced motion — keep fades, drop movement. */

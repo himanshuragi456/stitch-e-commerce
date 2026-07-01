@@ -1,0 +1,376 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ProductCard from '../components/product/ProductCard.astro';
+import StyleVideo from '../components/StyleVideo.astro';
+import { api } from '../lib/api';
+import { heroImage, fabricFallback, CATEGORY_IMAGES, STORY_IMAGE } from '../lib/images';
+import type { Category, ProductListItem, PublicSettings } from '../lib/types';
+
+let categories: Category[] = [];
+let featured: ProductListItem[] = [];
+let newArrivals: ProductListItem[] = [];
+let settings: PublicSettings | null = null;
+
+try {
+  const [cats, recent, featuredRes, publicSettings] = await Promise.all([
+    api.categories(),
+    api.products({ per_page: 8, sort: 'newest' }),
+    api.products({ per_page: 12, sort: 'newest' }),
+    api.publicSettings(),
+  ]);
+  categories = cats;
+  newArrivals = recent.data.slice(0, 8);
+  featured = featuredRes.data.filter((p) => p.is_featured).slice(0, 4);
+  if (featured.length < 4) featured = featuredRes.data.slice(0, 4);
+  settings = publicSettings;
+} catch (err) {
+  console.warn('[home-midnight] failed to load data:', (err as Error).message);
+}
+
+const styleVideo = settings?.style_video;
+const heroSrc = heroImage();
+
+const orgJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Store',
+  name: 'Shree Krishna Collection',
+  description: 'Premium unstitched cloth priced per metre — shirting, suiting, kurta and ethnic fabrics.',
+  url: Astro.site?.href,
+};
+
+const trustItems = [
+  { title: 'Sold by the metre', body: 'Pick your exact length — pay only for the cloth you need.', icon: 'ruler' },
+  { title: 'Ready to stitch', body: 'Premium unstitched fabric, tailored your way.', icon: 'stitch' },
+  { title: 'Secure checkout', body: 'Fast, protected payments with instant confirmation.', icon: 'shield' },
+];
+
+const steps = [
+  { n: '01', title: 'Choose your fabric', body: 'Browse shirting, suiting, kurta and ethnic cloth — filter by colour, material and pattern.' },
+  { n: '02', title: 'Pick your length', body: 'Select 1.25 m, 1.50 m or more. You pay the per-metre price for exactly what you need.' },
+  { n: '03', title: 'Get it stitched', body: 'We ship the unstitched cloth to your door — hand it to your tailor and make it yours.' },
+];
+
+const promises = [
+  { title: 'Curated, not endless', body: 'Every bolt is chosen by hand. We carry fabrics we would stitch for ourselves.', icon: 'sparkle' },
+  { title: 'Honest per-metre pricing', body: 'No bundles, no padding. The price you see is the price per metre — simple maths.', icon: 'tag' },
+  { title: 'Pairing made easy', body: 'Shirt cloth shows matching trouser cloth, so a full outfit is one scroll away.', icon: 'layers' },
+  { title: 'Shipped with care', body: 'Folded, protected and tracked from our studio in Surat to your doorstep.', icon: 'truck' },
+];
+
+const storyImage = STORY_IMAGE;
+---
+
+<BaseLayout
+  title="Shree Krishna Collection — Midnight Theme"
+  description="Premium unstitched cloth, priced per metre and ready to be stitched your way."
+  image={heroSrc}
+  theme="midnight"
+>
+  <script is:inline type="application/ld+json" slot="head" set:html={JSON.stringify(orgJsonLd)} />
+
+  <div>
+
+  <!-- Hero -->
+  <section class="hero-section relative overflow-hidden border-b border-[var(--color-border)]">
+    <div class="hero-bg pointer-events-none absolute inset-0 -z-10" aria-hidden="true"></div>
+    <svg class="pointer-events-none absolute inset-0 -z-10 h-full w-full opacity-[0.06]" aria-hidden="true" preserveAspectRatio="none">
+      <defs>
+        <pattern id="thread-grid-mn" x="0" y="0" width="48" height="48" patternUnits="userSpaceOnUse">
+          <path d="M 48 0 L 0 0 0 48" fill="none" stroke="#4f46e5" stroke-width="0.5"/>
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#thread-grid-mn)" />
+    </svg>
+
+    <div class="container-content grid items-center gap-10 py-16 lg:grid-cols-2 lg:py-24">
+      <div class="hero-reveal max-w-xl">
+        <span class="badge-pill inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1 text-xs font-medium tracking-wide text-[var(--color-ink-muted)]">
+          <span class="badge-dot h-1.5 w-1.5 rounded-full bg-[var(--color-accent)]"></span>
+          Unstitched · By the metre
+        </span>
+        <h1 class="mt-5 text-[2rem] leading-[1.08] [text-wrap:balance] sm:text-5xl lg:text-[3.4rem]">
+          Cloth worth
+          <span class="hero-italic italic text-[var(--color-primary)]">stitching</span> a story around.
+        </h1>
+        <p class="mt-5 max-w-md text-base leading-relaxed text-[var(--color-ink-muted)]">
+          Hand-picked shirting, suiting and ethnic fabrics — priced per metre, cut to your length, and ready for your tailor.
+        </p>
+        <div class="mt-8 flex flex-wrap gap-3">
+          <a href="/category/shirting" class="btn btn-primary hero-cta-primary">Shop the collection</a>
+          <a href="/about" class="btn btn-ghost border border-[var(--color-border)]">Our story</a>
+        </div>
+
+        <div class="mt-10 flex flex-wrap gap-3">
+          <div class="float-card float-card-1 flex items-center gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]/90 px-4 py-3 shadow-[var(--shadow-md)] backdrop-blur-sm">
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--color-accent)]/15 text-[var(--color-accent)]">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.3 8.7 8.7 21.3a1 1 0 0 1-1.4 0l-4.6-4.6a1 1 0 0 1 0-1.4L15.3 2.7a1 1 0 0 1 1.4 0l4.6 4.6a1 1 0 0 1 0 1.4Z"/><path d="m7.5 10.5 2 2"/><path d="m10.5 7.5 2 2"/></svg>
+            </span>
+            <div>
+              <p class="text-[11px] text-[var(--color-ink-muted)]">Price per metre</p>
+              <p class="text-sm font-semibold text-[var(--color-ink)]">From ₹149/m</p>
+            </div>
+          </div>
+
+          <div class="float-card float-card-2 flex items-center gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]/90 px-4 py-3 shadow-[var(--shadow-md)] backdrop-blur-sm">
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--color-primary)]/20 text-[var(--color-primary)]">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/></svg>
+            </span>
+            <div>
+              <p class="text-[11px] text-[var(--color-ink-muted)]">Fabric types</p>
+              <p class="text-sm font-semibold text-[var(--color-ink)]">200+ varieties</p>
+            </div>
+          </div>
+
+          <div class="float-card float-card-3 flex items-center gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]/90 px-4 py-3 shadow-[var(--shadow-md)] backdrop-blur-sm">
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--color-accent)]/10 text-[var(--color-accent)]">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.7 8.9a1 1 0 0 1-.6 0C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.2-2.7a1 1 0 0 1 1.5 0C14.5 3.8 17 5 19 5a1 1 0 0 1 1 1Z"/><path d="m9 12 2 2 4-4"/></svg>
+            </span>
+            <div>
+              <p class="text-[11px] text-[var(--color-ink-muted)]">Surat sourced</p>
+              <p class="text-sm font-semibold text-[var(--color-ink)]">Direct from mill</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hero-reveal hero-reveal-delayed">
+        <div class="hero-image-wrap relative">
+          <div class="hero-glow absolute -inset-6 -z-10 rounded-[28px]" aria-hidden="true"></div>
+          <img
+            src={heroSrc}
+            alt="Bespoke fabric"
+            width="640"
+            height="800"
+            loading="eager"
+            fetchpriority="high"
+            class="hero-img aspect-[4/5] w-full rounded-[20px] object-cover shadow-[0_24px_64px_-8px_rgba(79,70,229,0.35)]"
+          />
+          <div class="float-overlay float-overlay-1 absolute -left-6 top-8 flex items-center gap-2.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-2.5 shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
+            <span class="relative flex h-2.5 w-2.5">
+              <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--color-accent)] opacity-60"></span>
+              <span class="relative inline-flex h-2.5 w-2.5 rounded-full bg-[var(--color-accent)]"></span>
+            </span>
+            <span class="text-xs font-semibold text-[var(--color-ink)]">New arrivals weekly</span>
+          </div>
+          <div class="float-overlay float-overlay-2 absolute -left-4 bottom-16 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-3.5 shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
+            <div class="flex items-center gap-1">
+              {Array.from({length: 5}).map((_, i) => (
+                <svg width="13" height="13" viewBox="0 0 24 24" fill={i < 4 ? "var(--color-accent)" : "none"} stroke="var(--color-accent)" stroke-width="2" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              ))}
+            </div>
+            <p class="mt-1 text-[11px] font-semibold text-[var(--color-ink)]">4.9 / 5 · 1,400+ orders</p>
+            <p class="text-[10px] text-[var(--color-ink-muted)]">Verified buyers</p>
+          </div>
+          <div class="float-overlay float-overlay-3 absolute -right-5 top-1/3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-3 shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
+            <p class="mb-2 text-[10px] font-medium uppercase tracking-widest text-[var(--color-ink-muted)]">Colour palette</p>
+            <div class="flex gap-1.5">
+              <span class="h-5 w-5 rounded-full bg-[#4f46e5] ring-1 ring-[var(--color-border)]"></span>
+              <span class="h-5 w-5 rounded-full bg-[#f0c040] ring-1 ring-[var(--color-border)]"></span>
+              <span class="h-5 w-5 rounded-full bg-[#0d0e1a] ring-1 ring-[var(--color-border)]"></span>
+              <span class="h-5 w-5 rounded-full bg-[#a89eff] ring-1 ring-[var(--color-border)]"></span>
+              <span class="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--color-surface)] text-[8px] text-[var(--color-ink-muted)] ring-1 ring-[var(--color-border)]">+18</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {styleVideo?.enabled && styleVideo.youtube_id && <StyleVideo video={styleVideo} />}
+
+  <!-- Categories -->
+  {categories.length > 0 && (
+    <section class="container-content py-16">
+      <div class="mb-8 flex items-end justify-between">
+        <h2 class="text-2xl sm:text-3xl">Shop by fabric</h2>
+        <a href="/category/shirting" class="text-sm font-medium text-[var(--color-primary)] transition-opacity hover:opacity-70">View all</a>
+      </div>
+      <div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
+        {categories.slice(0, 5).map((c) => (
+          <a href={`/category/${c.slug}`} class="group relative isolate flex aspect-[4/5] flex-col justify-end overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border)] p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-lg)]">
+            <img src={c.image_url ?? CATEGORY_IMAGES[c.slug] ?? fabricFallback(c.slug, { w: 500, h: 625 })} alt={`${c.name} fabric`} width="500" height="625" loading="lazy" decoding="async" class="absolute inset-0 z-0 h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.05]" />
+            <div class="absolute inset-0 z-[1] bg-gradient-to-t from-[var(--color-primary)]/90 via-[var(--color-primary)]/30 to-transparent" aria-hidden="true" />
+            <span class="font-[var(--font-heading)] text-lg font-medium text-white drop-shadow-sm">{c.name}</span>
+            {c.product_count !== undefined && <span class="text-xs text-white/75">{c.product_count} fabrics</span>}
+            <span class="mt-2 inline-flex items-center gap-1 text-xs font-medium text-[var(--color-accent)] opacity-0 transition-all duration-200 ease-out group-hover:translate-x-0.5 group-hover:opacity-100">
+              Explore
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+            </span>
+          </a>
+        ))}
+      </div>
+    </section>
+  )}
+
+  <!-- How it works -->
+  <section class="container-content py-16">
+    <div class="mb-10 max-w-lg">
+      <h2 class="text-2xl sm:text-3xl">From bolt to bespoke</h2>
+      <p class="mt-2 text-sm text-[var(--color-ink-muted)]">Buying cloth by the metre, made effortless.</p>
+    </div>
+    <div class="grid gap-px overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-border)] sm:grid-cols-3">
+      {steps.map((step) => (
+        <div class="bg-[var(--color-bg)] p-7">
+          <span class="font-[var(--font-heading)] text-3xl font-semibold text-[var(--color-accent)]">{step.n}</span>
+          <h3 class="mt-3 text-lg font-medium text-[var(--color-ink)]">{step.title}</h3>
+          <p class="mt-2 text-sm leading-relaxed text-[var(--color-ink-muted)]">{step.body}</p>
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <!-- Featured -->
+  {featured.length > 0 && (
+    <section class="bg-[var(--color-surface)]/60 py-16">
+      <div class="container-content">
+        <div class="mb-8 max-w-lg">
+          <h2 class="text-2xl sm:text-3xl">Featured this season</h2>
+          <p class="mt-2 text-sm text-[var(--color-ink-muted)]">A curated edit of fabrics our tailors keep coming back to.</p>
+        </div>
+        <div class="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-4">
+          {featured.map((p) => <ProductCard product={p} />)}
+        </div>
+      </div>
+    </section>
+  )}
+
+  <!-- Brand story -->
+  <section class="container-content py-16">
+    <div class="grid items-stretch gap-8 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border)] lg:grid-cols-2">
+      <div class="relative min-h-[320px]">
+        <img src={storyImage} alt="Fabric being selected" width="1000" height="1200" loading="lazy" decoding="async" class="absolute inset-0 h-full w-full object-cover" />
+      </div>
+      <div class="flex flex-col justify-center bg-[var(--color-surface)] p-8 lg:p-14">
+        <span class="text-xs font-medium uppercase tracking-[0.22em] text-[var(--color-accent)]">Our story</span>
+        <h2 class="mt-4 text-2xl leading-snug sm:text-3xl">A textile family, three generations deep.</h2>
+        <p class="mt-4 text-[0.95rem] leading-relaxed text-[var(--color-ink-muted)]">From the heart of Surat's textile market, Shree Krishna Collection brings the same cloth that fills the finest tailoring houses — now a few taps away.</p>
+        <div class="mt-7"><a href="/about" class="btn btn-primary">Read our story</a></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- New arrivals -->
+  {newArrivals.length > 0 && (
+    <section class="container-content py-16">
+      <div class="mb-8 flex items-end justify-between">
+        <h2 class="text-2xl sm:text-3xl">New arrivals</h2>
+      </div>
+      <div class="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 lg:grid-cols-4">
+        {newArrivals.map((p) => <ProductCard product={p} />)}
+      </div>
+    </section>
+  )}
+
+  <!-- Trust band -->
+  <section class="border-t border-[var(--color-border)] bg-[var(--color-surface)]">
+    <div class="container-content grid gap-8 py-14 sm:grid-cols-3">
+      {trustItems.map((item) => (
+        <div class="flex items-start gap-4">
+          <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radius)] bg-[var(--color-bg)] text-[var(--color-primary)] shadow-[var(--shadow-sm)]">
+            {item.icon === 'ruler' && <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.3 8.7 8.7 21.3a1 1 0 0 1-1.4 0l-4.6-4.6a1 1 0 0 1 0-1.4L15.3 2.7a1 1 0 0 1 1.4 0l4.6 4.6a1 1 0 0 1 0 1.4Z"/><path d="m7.5 10.5 2 2"/><path d="m10.5 7.5 2 2"/><path d="m13.5 4.5 2 2"/><path d="m4.5 13.5 2 2"/></svg>}
+            {item.icon === 'stitch' && <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h3l2-5 4 10 2-5h7"/></svg>}
+            {item.icon === 'shield' && <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.7 8.9a1 1 0 0 1-.6 0C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.2-2.7a1 1 0 0 1 1.5 0C14.5 3.8 17 5 19 5a1 1 0 0 1 1 1Z"/><path d="m9 12 2 2 4-4"/></svg>}
+          </span>
+          <div>
+            <h3 class="text-base font-medium text-[var(--color-ink)]">{item.title}</h3>
+            <p class="mt-1 text-sm text-[var(--color-ink-muted)]">{item.body}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <!-- Why Shree Krishna -->
+  <section class="container-content py-16">
+    <div class="mb-10 max-w-lg">
+      <h2 class="text-2xl sm:text-3xl">Why shop with us</h2>
+      <p class="mt-2 text-sm text-[var(--color-ink-muted)]">The little things that make buying cloth online feel right.</p>
+    </div>
+    <div class="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+      {promises.map((p) => (
+        <div>
+          <span class="flex h-11 w-11 items-center justify-center rounded-[var(--radius)] bg-[var(--color-surface)] text-[var(--color-primary)]">
+            {p.icon === 'sparkle' && <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z"/></svg>}
+            {p.icon === 'tag' && <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.6 2.6 21 11a2 2 0 0 1 0 2.8l-7.2 7.2a2 2 0 0 1-2.8 0L2.6 12.6A2 2 0 0 1 2 11.2V4a2 2 0 0 1 2-2h7.2a2 2 0 0 1 1.4.6Z"/><circle cx="7.5" cy="7.5" r="1.2"/></svg>}
+            {p.icon === 'layers' && <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/></svg>}
+            {p.icon === 'truck' && <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 18V6a1 1 0 0 0-1-1H2a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h1"/><path d="M14 9h4l3 3v5a1 1 0 0 1-1 1h-1"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg>}
+          </span>
+          <h3 class="mt-4 text-base font-medium text-[var(--color-ink)]">{p.title}</h3>
+          <p class="mt-2 text-sm leading-relaxed text-[var(--color-ink-muted)]">{p.body}</p>
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <!-- Newsletter CTA -->
+  <section class="container-content pb-20">
+    <div class="relative overflow-hidden rounded-[var(--radius-lg)] bg-[var(--color-primary)] px-6 py-14 text-center sm:px-12">
+      <div class="pointer-events-none absolute inset-0 opacity-50" style="background: radial-gradient(40rem 22rem at 50% -30%, rgba(184,115,51,0.30), transparent 70%);" aria-hidden="true"></div>
+      <div class="relative mx-auto max-w-xl">
+        <h2 class="text-2xl text-white sm:text-3xl">New fabrics, first dibs.</h2>
+        <p class="mt-3 text-sm text-white/70">Join our list for fresh arrivals, seasonal edits and the occasional styling tip. No spam — just good cloth.</p>
+        <form class="mx-auto mt-7 flex max-w-md flex-col gap-3 sm:flex-row" onsubmit="event.preventDefault();">
+          <label for="newsletter-email-mn" class="sr-only">Email address</label>
+          <input id="newsletter-email-mn" type="email" required placeholder="you@example.com" class="h-11 flex-1 rounded-[var(--radius)] border border-white/15 bg-white/10 px-4 text-sm text-white placeholder:text-white/50 focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/40" />
+          <button type="submit" class="btn btn-accent">Subscribe</button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  </div><!-- /theme-midnight -->
+</BaseLayout>
+
+<style>
+  .hero-bg {
+    background:
+      radial-gradient(70rem 45rem at 80% -5%, rgba(240,192,64,0.10), transparent 55%),
+      radial-gradient(55rem 45rem at -5% 110%, rgba(79,70,229,0.18), transparent 55%),
+      radial-gradient(30rem 30rem at 55% 80%, rgba(240,192,64,0.05), transparent 60%);
+  }
+  .hero-glow {
+    background: radial-gradient(60% 60% at 50% 50%, rgba(79,70,229,0.25), transparent 70%);
+    filter: blur(28px);
+  }
+  .hero-reveal { animation: hero-in 680ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+  .hero-reveal-delayed { animation-delay: 140ms; }
+  @keyframes hero-in { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  .badge-pill { animation: badge-in 500ms cubic-bezier(0.16, 1, 0.3, 1) 80ms both; }
+  @keyframes badge-in { from { opacity: 0; transform: scale(0.92) translateY(4px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+  .hero-italic {
+    background: linear-gradient(110deg, #7c74f0 0%, #a89eff 40%, #7c74f0 60%);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: shimmer 4s linear 1.2s infinite;
+  }
+  @keyframes shimmer { 0% { background-position: 0% center; } 100% { background-position: 200% center; } }
+  .hero-cta-primary { animation: cta-breathe 3.6s ease-in-out 2s infinite; }
+  @keyframes cta-breathe {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(79,70,229,0); }
+    50% { box-shadow: 0 0 0 8px rgba(79,70,229,0.28); }
+  }
+  .float-card-1 { animation: card-rise 560ms cubic-bezier(0.16, 1, 0.3, 1) 420ms both, bob-a 7s ease-in-out 1.2s infinite; }
+  .float-card-2 { animation: card-rise 560ms cubic-bezier(0.16, 1, 0.3, 1) 520ms both, bob-b 8s ease-in-out 1.5s infinite; }
+  .float-card-3 { animation: card-rise 560ms cubic-bezier(0.16, 1, 0.3, 1) 620ms both, bob-c 6.5s ease-in-out 1.8s infinite; }
+  @keyframes card-rise { from { opacity: 0; transform: translateY(12px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  @keyframes bob-a { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-5px); } }
+  @keyframes bob-b { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-7px); } }
+  @keyframes bob-c { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-4px); } }
+  .float-overlay-1 { animation: overlay-in 620ms cubic-bezier(0.16, 1, 0.3, 1) 700ms both, bob-a 9s ease-in-out 1.8s infinite; }
+  .float-overlay-2 { animation: overlay-in 620ms cubic-bezier(0.16, 1, 0.3, 1) 860ms both, bob-b 10s ease-in-out 2.2s infinite; }
+  .float-overlay-3 { animation: overlay-in 620ms cubic-bezier(0.16, 1, 0.3, 1) 980ms both, bob-b 8s ease-in-out 2.5s infinite; }
+  @keyframes overlay-in { from { opacity: 0; transform: translateX(-8px) scale(0.95); } to { opacity: 1; transform: translateX(0) scale(1); } }
+  .hero-img { animation: img-in 800ms cubic-bezier(0.16, 1, 0.3, 1) 200ms both; }
+  @keyframes img-in { from { opacity: 0; transform: scale(1.03); } to { opacity: 1; transform: scale(1); } }
+  .float-card:hover {
+    transform: translateY(-3px) scale(1.01);
+    box-shadow: 0 12px 32px rgba(79,70,229,0.25);
+    transition: transform 200ms ease, box-shadow 200ms ease;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hero-reveal, .badge-pill, .hero-italic, .hero-cta-primary, .float-card, .float-overlay, .hero-img { animation: none; }
+    .hero-italic { -webkit-text-fill-color: var(--color-primary); background: none; }
+  }
+</style>

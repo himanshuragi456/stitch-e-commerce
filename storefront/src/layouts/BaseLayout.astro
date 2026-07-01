@@ -12,8 +12,9 @@ interface Props {
   image?: string;
   noindex?: boolean;
   type?: 'website' | 'product' | 'article';
+  theme?: 'default' | 'emerald' | 'midnight' | 'terracotta';
 }
-const { title, description, image, noindex, type } = Astro.props;
+const { title, description, image, noindex, type, theme = 'emerald' } = Astro.props;
 
 // Fetched at build time; resilient if the API hiccups for non-catalog data.
 let categories: Category[] = [];
@@ -26,7 +27,7 @@ try {
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme={theme}>
   <head>
     <BaseHead title={title} description={description} image={image} noindex={noindex} type={type} />
     <slot name="head" />

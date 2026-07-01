@@ -1,0 +1,11 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import CheckoutPageIsland from '../components/islands/CheckoutPage';
+---
+
+<BaseLayout title="Checkout — Shree Krishna Collection" noindex>
+  <div class="container-content py-10 lg:py-16">
+    <h1 class="mb-8 font-[var(--font-heading)] text-3xl font-semibold">Checkout</h1>
+    <CheckoutPageIsland client:load />
+  </div>
+</BaseLayout>

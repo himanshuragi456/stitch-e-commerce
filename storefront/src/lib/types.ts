@@ -102,3 +102,76 @@ export interface Paginated<T> {
 export interface Wrapped<T> {
   data: T;
 }
+
+// ── Cart ──────────────────────────────────────────────────────────────────────
+
+export interface CartItem {
+  id: string;
+  product_id: string;
+  product_name: string;
+  product_slug: string;
+  primary_image_url: string | null;
+  length_metres: string;
+  unit_price_paise: number;
+  quantity: number;
+  line_total_paise: number;
+}
+
+export interface Cart {
+  token: string;
+  items: CartItem[];
+  subtotal_paise: number;
+  discount_paise: number;
+  shipping_paise: number;
+  total_paise: number;
+  coupon_code: string | null;
+  coupon_discount_label: string | null;
+  item_count: number;
+}
+
+// ── Customer / Account ────────────────────────────────────────────────────────
+
+export interface CustomerProfile {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  created_at: string;
+}
+
+export interface OrderAddress {
+  name: string;
+  line1: string;
+  line2: string | null;
+  city: string;
+  state: string;
+  pincode: string;
+  phone: string;
+}
+
+export interface CustomerOrderItem {
+  id: string;
+  product_name: string;
+  product_slug: string | null;
+  primary_image_url: string | null;
+  length_metres: string;
+  quantity: number;
+  unit_price_paise: number;
+  line_total_paise: number;
+}
+
+export interface CustomerOrder {
+  id: string;
+  order_number: string;
+  status: string;
+  payment_status: string;
+  subtotal_paise: number;
+  discount_paise: number;
+  shipping_paise: number;
+  total_paise: number;
+  coupon_code: string | null;
+  shipping_address: OrderAddress;
+  notes: string | null;
+  placed_at: string;
+  items: CustomerOrderItem[];
+}
