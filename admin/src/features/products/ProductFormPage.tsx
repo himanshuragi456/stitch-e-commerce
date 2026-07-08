@@ -46,6 +46,9 @@ export default function ProductFormPage() {
   const [metaDesc, setMetaDesc] = useState('');
   const [lengths, setLengths] = useState<LengthRow[]>([{ length_metres: 1.5, position: 0 }]);
   const [images, setImages] = useState<ProductImage[]>([]);
+  // Files chosen on the "New product" form before it has an id — uploaded
+  // automatically right after the product is created.
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -75,17 +78,18 @@ export default function ProductFormPage() {
   const catOptions = (cats?.data ?? []).map((c) => ({ value: c.id, label: c.name }));
 
   const save = async () => {
-    if (!name.trim() || !categoryId || !pricePaise || stockMetres.trim() === '') {
-      toast.error('Name, category, price and stock are required.');
-      return;
-    }
+    // Field-specific messages so it's obvious what's missing.
+    if (!name.trim()) { toast.error('Product name is required.'); return; }
+    if (!categoryId) { toast.error('Please select a category.'); return; }
+    if (!pricePaise) { toast.error('Price per metre is required.'); return; }
+    if (stockMetres.trim() === '') { toast.error('Stock metres is required.'); return; }
     if (Number.isNaN(parseFloat(stockMetres)) || parseFloat(stockMetres) < 0) {
       toast.error('Stock metres must be a number of 0 or more.');
       return;
     }
     const cleanLengths = lengths.filter((l) => Number.isFinite(l.length_metres) && l.length_metres > 0);
     if (cleanLengths.length === 0) {
-      toast.error('Add at least one valid offered length.');
+      toast.error('Add at least one valid offered length (e.g. 1.5).');
       return;
     }
     setSaving(true);
@@ -116,6 +120,17 @@ export default function ProductFormPage() {
         cleanLengths.map((l, i) => ({ length_metres: l.length_metres, position: i })),
       );
 
+      // On create, upload any images the user picked before the product existed,
+      // then send them to the edit page so they can see/manage the uploads.
+      if (!isEdit && pendingFiles.length > 0) {
+        await uploadImages(pendingFiles, savedId);
+        setPendingFiles([]);
+        qc.invalidateQueries({ queryKey: ['admin-products'] });
+        toast.success('Product created.');
+        navigate(`/products/${savedId}/edit`);
+        return;
+      }
+
       toast.success(isEdit ? 'Product updated.' : 'Product created.');
       qc.invalidateQueries({ queryKey: ['admin-products'] });
       navigate('/products');
@@ -126,11 +141,13 @@ export default function ProductFormPage() {
     }
   };
 
-  const uploadImages = async (files: File[]) => {
-    if (!id) { toast.info('Save product first before uploading images.'); return; }
+  // Upload against an explicit product id (used right after create, when the
+  // `id` route param isn't set yet) or the current one when editing.
+  const uploadImages = async (files: File[], productId = id) => {
+    if (!productId) { toast.info('Save product first before uploading images.'); return; }
     setUploading(true);
     try {
-      const res = await productsApi.uploadImages(id, files);
+      const res = await productsApi.uploadImages(productId, files);
       setImages((prev) => [...prev, ...res.data]);
       toast.success(`${files.length} image(s) uploaded.`);
     } catch (e) {
@@ -183,9 +200,10 @@ export default function ProductFormPage() {
               }} required />
             </div>
             <Input label="Slug" value={slug} onChange={(e) => setSlug(e.target.value)} hint="Auto-generated from name" />
-            <Input label="SKU" value={sku} onChange={(e) => setSku(e.target.value)} />
+            <Input label="SKU (optional)" value={sku} onChange={(e) => setSku(e.target.value)}
+              hint="Your internal product code for stock tracking — not shown to customers." />
             <Select
-              label="Category"
+              label="Category *"
               options={catOptions}
               placeholder="Select category"
               value={categoryId}
@@ -227,7 +245,7 @@ export default function ProductFormPage() {
           <h2 className="font-semibold text-sm mb-4">Pricing & Stock</h2>
           <div className="grid gap-4 sm:grid-cols-3">
             <MoneyInput
-              label="Price per metre"
+              label="Price per metre *"
               valuePaise={pricePaise}
               onChangePaise={setPricePaise}
             />
@@ -238,7 +256,7 @@ export default function ProductFormPage() {
               hint="Strike-through price"
             />
             <Input
-              label="Stock metres"
+              label="Stock metres *"
               type="number"
               step="0.01"
               min="0"
@@ -292,20 +310,47 @@ export default function ProductFormPage() {
         <section className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-lg)] p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-semibold text-sm">Images</h2>
-            {isEdit && (
-              <Button variant="secondary" size="sm" iconLeft={<Upload size={13} />}
-                onClick={() => fileRef.current?.click()} loading={uploading}>
-                Upload
-              </Button>
-            )}
+            <Button variant="secondary" size="sm" iconLeft={<Upload size={13} />}
+              onClick={() => fileRef.current?.click()} loading={uploading}>
+              {isEdit ? 'Upload' : 'Choose images'}
+            </Button>
           </div>
           <input
             ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp"
             multiple className="hidden"
-            onChange={(e) => { if (e.target.files) uploadImages(Array.from(e.target.files)); }}
+            onChange={(e) => {
+              if (!e.target.files?.length) return;
+              const files = Array.from(e.target.files);
+              // On the New form there's no product id yet — stage the files and
+              // upload them automatically when the product is created.
+              if (isEdit) uploadImages(files);
+              else setPendingFiles((prev) => [...prev, ...files]);
+              e.target.value = ''; // allow re-selecting the same file
+            }}
           />
           {!isEdit && (
-            <p className="text-sm text-[var(--color-text-muted)]">Save the product first, then upload images.</p>
+            <p className="text-sm text-[var(--color-text-muted)] mb-3">
+              Pick images now — they'll upload automatically when you create the product. You can set the primary image afterwards.
+            </p>
+          )}
+          {/* Staged (not-yet-uploaded) files on the New form */}
+          {pendingFiles.length > 0 && (
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mb-3">
+              {pendingFiles.map((file, i) => (
+                <div key={i} className="relative group rounded-[var(--radius-md)] overflow-hidden border border-[var(--color-border)] aspect-square">
+                  <img src={URL.createObjectURL(file)} alt={file.name} className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <button type="button" onClick={() => setPendingFiles((prev) => prev.filter((_, idx) => idx !== i))}
+                      className="text-white hover:text-red-300">
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                  <span className="absolute top-1 left-1 bg-[var(--color-surface)]/90 text-[9px] font-medium px-1 rounded">
+                    Pending
+                  </span>
+                </div>
+              ))}
+            </div>
           )}
           {images.length > 0 && (
             <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
