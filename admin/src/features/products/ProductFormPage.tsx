@@ -120,15 +120,12 @@ export default function ProductFormPage() {
         cleanLengths.map((l, i) => ({ length_metres: l.length_metres, position: i })),
       );
 
-      // On create, upload any images the user picked before the product existed,
-      // then send them to the edit page so they can see/manage the uploads.
+      // On create, upload any images the user picked before the product existed.
+      // The backend auto-marks the first upload as primary, so we can go straight
+      // to the list — no need to detour through the edit page.
       if (!isEdit && pendingFiles.length > 0) {
         await uploadImages(pendingFiles, savedId);
         setPendingFiles([]);
-        qc.invalidateQueries({ queryKey: ['admin-products'] });
-        toast.success('Product created.');
-        navigate(`/products/${savedId}/edit`);
-        return;
       }
 
       toast.success(isEdit ? 'Product updated.' : 'Product created.');

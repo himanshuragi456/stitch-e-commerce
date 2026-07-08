@@ -55,13 +55,27 @@ class AdminSettingController extends Controller
      */
     public function rebuildStorefront(): JsonResponse
     {
+        // Give a precise reason when it can't run, instead of a vague failure.
+        if (! config('skc.rebuild.enabled')) {
+            return response()->json([
+                'triggered' => false,
+                'message' => 'Auto-rebuild is disabled. Set STOREFRONT_REBUILD_ENABLED=true in the server .env.',
+            ], 422);
+        }
+        if (! config('skc.rebuild.github_repo') || ! config('skc.rebuild.github_token')) {
+            return response()->json([
+                'triggered' => false,
+                'message' => 'Rebuild not configured: GITHUB_REPO and GITHUB_DISPATCH_TOKEN must be set in the server .env.',
+            ], 422);
+        }
+
         $triggered = $this->rebuild->trigger('manual');
 
         return response()->json([
             'triggered' => $triggered,
             'message' => $triggered
-                ? 'Storefront rebuild dispatched.'
-                : 'Rebuild skipped (disabled or missing config).',
-        ]);
+                ? 'Storefront rebuild dispatched — the live site updates in ~1–2 minutes.'
+                : 'Rebuild dispatch failed. Check the GitHub token permissions (Actions: read/write) and server logs.',
+        ], $triggered ? 200 : 502);
     }
 }
