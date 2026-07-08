@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { useStore } from '@nanostores/react';
 import { $authToken } from '../../lib/auth';
 import { api } from '../../lib/api';
+import { readLastOrder } from '../../lib/cart';
 import { formatPaise } from '../../lib/format';
 import type { CustomerOrder } from '../../lib/types';
 
@@ -20,7 +21,20 @@ export default function OrderConfirmation({ orderId }: Props) {
 
   useEffect(() => {
     if (!orderId) return;
-    api.customer.order(authToken || '', orderId)
+    setLoading(true);
+
+    // Logged-in customers can read the order directly. Guests have no token, so
+    // fall back to the public lookup using the order number + email we stashed
+    // at checkout time.
+    const fetchOrder = authToken
+      ? api.customer.order(authToken, orderId)
+      : (() => {
+          const stashed = readLastOrder(orderId);
+          if (!stashed) return Promise.reject(new Error('guest lookup unavailable'));
+          return api.checkout.publicOrder(stashed.order_number, stashed.email);
+        })();
+
+    fetchOrder
       .then(setOrder)
       .catch(() => setOrder(null))
       .finally(() => setLoading(false));

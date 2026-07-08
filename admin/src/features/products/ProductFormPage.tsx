@@ -34,7 +34,6 @@ export default function ProductFormPage() {
   const [intendedUse, setIntendedUse] = useState('shirt');
   const [material, setMaterial] = useState('');
   const [color, setColor] = useState('');
-  const [colorHex, setColorHex] = useState('#000000');
   const [pattern, setPattern] = useState('');
   const [description, setDescription] = useState('');
   const [pricePaise, setPricePaise] = useState<number | null>(null);
@@ -63,7 +62,7 @@ export default function ProductFormPage() {
     const p = product.data;
     setName(p.name); setSlug(p.slug); setCategoryId(p.category?.id ?? '');
     setIntendedUse(p.intended_use); setMaterial(p.material ?? ''); setColor(p.color ?? '');
-    setColorHex(p.color_hex ?? '#000000'); setPattern(p.pattern ?? '');
+    setPattern(p.pattern ?? '');
     setDescription(p.description ?? ''); setPricePaise(p.price_per_metre_paise);
     setComparePaise(p.compare_at_per_metre_paise ?? null);
     setStockMetres(p.stock_metres); setSku(p.sku ?? '');
@@ -76,8 +75,17 @@ export default function ProductFormPage() {
   const catOptions = (cats?.data ?? []).map((c) => ({ value: c.id, label: c.name }));
 
   const save = async () => {
-    if (!pricePaise || !categoryId || !stockMetres) {
+    if (!name.trim() || !categoryId || !pricePaise || stockMetres.trim() === '') {
       toast.error('Name, category, price and stock are required.');
+      return;
+    }
+    if (Number.isNaN(parseFloat(stockMetres)) || parseFloat(stockMetres) < 0) {
+      toast.error('Stock metres must be a number of 0 or more.');
+      return;
+    }
+    const cleanLengths = lengths.filter((l) => Number.isFinite(l.length_metres) && l.length_metres > 0);
+    if (cleanLengths.length === 0) {
+      toast.error('Add at least one valid offered length.');
       return;
     }
     setSaving(true);
@@ -85,7 +93,7 @@ export default function ProductFormPage() {
       const payload = {
         name, slug: slug || undefined, category_id: categoryId, intended_use: intendedUse,
         material: material || undefined, color: color || undefined,
-        color_hex: colorHex || undefined, pattern: pattern || undefined,
+        pattern: pattern || undefined,
         description: description || undefined,
         price_per_metre_paise: pricePaise,
         compare_at_per_metre_paise: comparePaise || undefined,
@@ -105,7 +113,7 @@ export default function ProductFormPage() {
       // Save lengths
       await productsApi.replaceLengths(
         savedId!,
-        lengths.map((l, i) => ({ length_metres: l.length_metres, position: i })),
+        cleanLengths.map((l, i) => ({ length_metres: l.length_metres, position: i })),
       );
 
       toast.success(isEdit ? 'Product updated.' : 'Product created.');
@@ -149,8 +157,13 @@ export default function ProductFormPage() {
     setLengths((prev) => [...prev, { length_metres: 1.5, position: prev.length }]);
   const removeLength = (i: number) =>
     setLengths((prev) => prev.filter((_, idx) => idx !== i).map((l, idx) => ({ ...l, position: idx })));
-  const updateLength = (i: number, value: number) =>
-    setLengths((prev) => prev.map((l, idx) => idx === i ? { ...l, length_metres: value } : l));
+  const updateLength = (i: number, raw: string) =>
+    setLengths((prev) => prev.map((l, idx) => {
+      if (idx !== i) return l;
+      // Empty / invalid entry becomes 0 so the input can render "" and be filtered out on save.
+      const parsed = raw === '' ? 0 : parseFloat(raw);
+      return { ...l, length_metres: Number.isNaN(parsed) ? 0 : parsed };
+    }));
 
   if (isEdit && loadingProduct) return <div className="flex justify-center pt-20"><Spinner /></div>;
 
@@ -186,11 +199,6 @@ export default function ProductFormPage() {
             />
             <Input label="Material" value={material} onChange={(e) => setMaterial(e.target.value)} />
             <Input label="Color name" value={color} onChange={(e) => setColor(e.target.value)} />
-            <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium">Color hex</label>
-              <input type="color" value={colorHex} onChange={(e) => setColorHex(e.target.value)}
-                className="h-9 w-full cursor-pointer rounded-[var(--radius-md)] border border-[var(--color-border)] p-1" />
-            </div>
             <Input label="Pattern" value={pattern} onChange={(e) => setPattern(e.target.value)} />
             <div className="sm:col-span-2">
               <label className="block text-sm font-medium mb-1">Description</label>
@@ -241,7 +249,7 @@ export default function ProductFormPage() {
           {/* Price preview per length */}
           {pricePaise && lengths.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-2">
-              {lengths.map((l, i) => (
+              {lengths.filter((l) => l.length_metres > 0).map((l, i) => (
                 <span key={i} className="text-xs bg-[var(--color-surface-raised)] border border-[var(--color-border)] rounded px-2 py-1">
                   {l.length_metres}m → {formatMoney(Math.round(pricePaise * l.length_metres))}
                 </span>
@@ -267,8 +275,8 @@ export default function ProductFormPage() {
                   step="0.01"
                   min="0.1"
                   max="100"
-                  value={l.length_metres}
-                  onChange={(e) => updateLength(i, parseFloat(e.target.value))}
+                  value={l.length_metres === 0 ? '' : l.length_metres}
+                  onChange={(e) => updateLength(i, e.target.value)}
                   className="w-28 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-sm focus:border-[var(--color-primary)] focus:outline-none"
                 />
                 <span className="text-sm text-[var(--color-text-muted)]">metres</span>

@@ -64,7 +64,6 @@ export interface ProductListItem {
 
 export interface Product extends ProductListItem {
   description: string | null;
-  color_hex: string | null;
   pattern: string | null;
   position: number;
   meta_title: string | null;

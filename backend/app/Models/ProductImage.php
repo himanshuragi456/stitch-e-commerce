@@ -47,7 +47,7 @@ class ProductImage extends Model
     {
         return Str::startsWith($path, ['http://', 'https://'])
             ? $path
-            : Storage::url($path);
+            : asset(Storage::url($path));
     }
 
     /** @return BelongsTo<Product, ProductImage> */

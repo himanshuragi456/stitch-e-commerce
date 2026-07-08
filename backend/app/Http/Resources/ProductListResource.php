@@ -42,7 +42,6 @@ class ProductListResource extends JsonResource
             'intended_use' => $this->intended_use->value,
             'material' => $this->material,
             'color' => $this->color,
-            'color_hex' => $this->color_hex,
             'pattern' => $this->pattern,
             'primary_image' => $primary ? new ProductImageResource($primary) : null,
             'price_per_metre_paise' => $this->price_per_metre_paise,

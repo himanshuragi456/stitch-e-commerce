@@ -43,6 +43,6 @@ class CategoryResource extends JsonResource
 
         return Str::startsWith($this->image_path, ['http://', 'https://'])
             ? $this->image_path
-            : Storage::url($this->image_path);
+            : asset(Storage::url($this->image_path));
     }
 }

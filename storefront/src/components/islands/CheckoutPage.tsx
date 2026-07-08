@@ -4,11 +4,12 @@
  */
 import { useEffect, useState, useCallback } from 'react';
 import { useStore } from '@nanostores/react';
-import { $cartToken, clearCart } from '../../lib/cart';
+import { $cartToken, clearCart, stashLastOrder } from '../../lib/cart';
 import { $authToken, $customer } from '../../lib/auth';
 import { api } from '../../lib/api';
 import { formatPaise } from '../../lib/format';
-import type { Cart } from '../../lib/types';
+import { openRazorpayCheckout } from '../../lib/razorpay';
+import type { Cart, PaymentMethod } from '../../lib/types';
 
 interface AddrForm {
   name: string;
@@ -94,6 +95,7 @@ export default function CheckoutPage() {
   const [addr, setAddr] = useState<AddrForm>(EMPTY_ADDR);
   const [notes, setNotes] = useState('');
   const [samePhone, setSamePhone] = useState(true);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('razorpay');
 
   const loadCart = useCallback(async () => {
     if (!token) { setLoading(false); return; }
@@ -170,12 +172,13 @@ export default function CheckoutPage() {
 
     setPlacing(true);
     setError('');
+    const deliveryPhone = (samePhone ? customerPhone : addr.phone).trim();
     try {
       const res = await api.checkout.place(
         token,
         {
           email: customerEmail.trim(),
-          phone: (samePhone ? customerPhone : addr.phone).trim(),
+          phone: deliveryPhone,
           shipping_address: {
             name: addr.name,
             line1: addr.line1,
@@ -183,14 +186,64 @@ export default function CheckoutPage() {
             city: addr.city,
             state: addr.state,
             pincode: addr.pincode,
-            phone: (samePhone ? customerPhone : addr.phone).trim(),
+            phone: deliveryPhone,
           },
+          payment_method: paymentMethod,
           notes: notes || undefined,
         },
         authToken || null
       );
-      clearCart();
-      window.location.href = `/order/${res.data.id}/confirmation`;
+
+      const { order, razorpay } = res.data;
+      stashLastOrder({ id: order.id, order_number: order.order_number, email: customerEmail.trim() });
+
+      // Cash on delivery — order is already placed; go straight to confirmation.
+      if (paymentMethod === 'cod' || !razorpay) {
+        clearCart();
+        window.location.href = `/order/${order.id}/confirmation`;
+        return;
+      }
+
+      // Online payment — open the Razorpay widget, then verify server-side.
+      await openRazorpayCheckout({
+        keyId: razorpay.key_id,
+        razorpayOrderId: razorpay.razorpay_order_id,
+        amountPaise: razorpay.amount_paise,
+        currency: razorpay.currency,
+        name: 'Shree Krishna Collection',
+        description: `Order ${order.order_number}`,
+        prefill: {
+          name: customerName.trim(),
+          email: customerEmail.trim(),
+          contact: deliveryPhone,
+        },
+        onSuccess: async (payment) => {
+          try {
+            await api.checkout.verify(
+              {
+                order_id: order.id,
+                razorpay_payment_id: payment.razorpay_payment_id,
+                razorpay_order_id: payment.razorpay_order_id,
+                razorpay_signature: payment.razorpay_signature,
+              },
+              authToken || null
+            );
+            clearCart();
+            window.location.href = `/order/${order.id}/confirmation`;
+          } catch (e) {
+            setError(
+              `Payment received but we couldn't confirm it automatically. Your order number is ${order.order_number} — please contact us with this number. (${(e as Error).message})`
+            );
+            setPlacing(false);
+          }
+        },
+        onDismiss: () => {
+          // Customer closed the payment dialog without paying. The order exists
+          // as pending/unpaid; let them retry from the confirmation page.
+          setError('Payment was not completed. Your order is saved as unpaid — you can retry payment or choose cash on delivery.');
+          setPlacing(false);
+        },
+      });
     } catch (e) {
       setError((e as Error).message);
       setPlacing(false);
@@ -315,6 +368,43 @@ export default function CheckoutPage() {
           </div>
         </section>
 
+        {/* Payment method */}
+        <section>
+          <h2 className="mb-4 font-[var(--font-heading)] text-lg font-semibold">Payment method</h2>
+          <div className="flex flex-col gap-3">
+            <label className={`flex cursor-pointer items-start gap-3 rounded-[var(--radius)] border p-4 ${
+              paymentMethod === 'razorpay' ? 'border-[var(--color-primary)] ring-1 ring-[var(--color-primary)]/20' : 'border-[var(--color-border)]'
+            }`}>
+              <input
+                type="radio"
+                name="payment_method"
+                checked={paymentMethod === 'razorpay'}
+                onChange={() => setPaymentMethod('razorpay')}
+                className="mt-0.5"
+              />
+              <span>
+                <span className="block text-sm font-medium">Pay online</span>
+                <span className="block text-xs text-[var(--color-ink-muted)]">UPI, cards, netbanking &amp; wallets via Razorpay. Secure and instant.</span>
+              </span>
+            </label>
+            <label className={`flex cursor-pointer items-start gap-3 rounded-[var(--radius)] border p-4 ${
+              paymentMethod === 'cod' ? 'border-[var(--color-primary)] ring-1 ring-[var(--color-primary)]/20' : 'border-[var(--color-border)]'
+            }`}>
+              <input
+                type="radio"
+                name="payment_method"
+                checked={paymentMethod === 'cod'}
+                onChange={() => setPaymentMethod('cod')}
+                className="mt-0.5"
+              />
+              <span>
+                <span className="block text-sm font-medium">Cash on delivery</span>
+                <span className="block text-xs text-[var(--color-ink-muted)]">Pay in cash when your order arrives. Our team will call to confirm.</span>
+              </span>
+            </label>
+          </div>
+        </section>
+
         {/* Notes */}
         <section>
           <h2 className="mb-3 font-[var(--font-heading)] text-lg font-semibold">Order notes <span className="text-sm font-normal text-[var(--color-ink-muted)]">(optional)</span></h2>
@@ -389,11 +479,17 @@ export default function CheckoutPage() {
           disabled={placing}
           className="btn btn-primary mt-6 w-full justify-center disabled:opacity-60"
         >
-          {placing ? 'Placing order…' : 'Place order'}
+          {placing
+            ? 'Placing order…'
+            : paymentMethod === 'razorpay'
+              ? `Pay ${formatPaise(cart.total_paise)}`
+              : 'Place order (Cash on delivery)'}
         </button>
 
         <p className="mt-3 text-center text-xs text-[var(--color-ink-muted)]">
-          Payment is collected on delivery or via bank transfer — our team will contact you to confirm.
+          {paymentMethod === 'razorpay'
+            ? 'You will be redirected to a secure Razorpay payment window.'
+            : 'No payment now — pay in cash when your order is delivered.'}
         </p>
       </div>
     </div>

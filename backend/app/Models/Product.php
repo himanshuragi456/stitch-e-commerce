@@ -25,7 +25,6 @@ class Product extends Model
         'intended_use',
         'material',
         'color',
-        'color_hex',
         'pattern',
         'price_per_metre_paise',
         'compare_at_per_metre_paise',

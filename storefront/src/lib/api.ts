@@ -4,9 +4,11 @@
 import type {
   Cart,
   Category,
+  CheckoutResult,
   CustomerOrder,
   CustomerProfile,
   Paginated,
+  PaymentMethod,
   ProductDetail,
   ProductListItem,
   PublicSettings,
@@ -178,10 +180,25 @@ export const api = {
           pincode: string;
           phone: string;
         };
+        payment_method: PaymentMethod;
         notes?: string;
       },
       authToken?: string | null
-    ) => post<Wrapped<CustomerOrder>>('/checkout', body, { cartToken, authToken: authToken ?? undefined }),
+    ) => post<Wrapped<CheckoutResult>>('/checkout', body, { cartToken, authToken: authToken ?? undefined }),
+
+    verify: (
+      body: {
+        order_id: string;
+        razorpay_payment_id: string;
+        razorpay_order_id: string;
+        razorpay_signature: string;
+      },
+      authToken?: string | null
+    ) => post<Wrapped<CustomerOrder>>('/checkout/verify', body, { authToken: authToken ?? undefined }),
+
+    /** Guest order lookup by order number + email (no auth required). */
+    publicOrder: (orderNumber: string, email: string) =>
+      get<Wrapped<CustomerOrder>>(`/orders/${encodeURIComponent(orderNumber)}/public`, { email }).then((r) => r.data),
   },
 
   // ── Customer auth & account ─────────────────────────────────────────────────

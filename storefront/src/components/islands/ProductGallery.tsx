@@ -10,11 +10,9 @@ interface Props {
   images: ProductImage[];
   productName: string;
   fallbackSrc: string;
-  /** color_hex from the product — applied as a multiply tint over the fallback fabric base. */
-  colorHex?: string | null;
 }
 
-export default function ProductGallery({ images, productName, fallbackSrc, colorHex }: Props) {
+export default function ProductGallery({ images, productName, fallbackSrc }: Props) {
   const [active, setActive] = useState(0);
   const touchStartX = useRef<number | null>(null);
 
@@ -22,8 +20,6 @@ export default function ProductGallery({ images, productName, fallbackSrc, color
   const primary = count > 0 ? images[active] : null;
   const src = primary?.url ?? fallbackSrc;
   const alt = primary?.alt ?? `${productName} — view ${active + 1}`;
-  // Show tint only when we're actually displaying the fallback (no real images).
-  const showTint = count === 0 && !!colorHex;
 
   const prev = useCallback(() => setActive((i) => (i - 1 + count) % count), [count]);
   const next = useCallback(() => setActive((i) => (i + 1) % count), [count]);
@@ -60,13 +56,6 @@ export default function ProductGallery({ images, productName, fallbackSrc, color
           fetchPriority="high"
           className="aspect-[4/5] w-full object-cover"
         />
-        {showTint && (
-          <div
-            className="pointer-events-none absolute inset-0 mix-blend-multiply"
-            style={{ backgroundColor: colorHex!, opacity: 0.72 }}
-            aria-hidden="true"
-          />
-        )}
       </div>
     );
   }

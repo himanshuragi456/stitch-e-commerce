@@ -1,150 +1,117 @@
-# Deployment & CI/CD — MilesWeb cPanel + GitHub Actions
+# Deployment & CI/CD — Shared LiteSpeed server (SSH + rsync)
 
-> How all three apps reach production on **MilesWeb cPanel shared hosting**, and how
-> catalog edits auto-rebuild the static storefront. cPanel has no native build service, so
-> **all builds run on GitHub Actions** and the **artifacts are deployed to cPanel** over
-> FTP (and the Laravel backend over FTP/SSH). Read `00-OVERVIEW.md` §5 first.
+> **This is the live, verified setup.** All three apps run on a shared **LiteSpeed** server
+> (the same box that hosts Magic Management / hotel-management "Server 2" and several other
+> projects). Deploys are **rsync over SSH** from your machine — the server is not a git repo
+> and there is no cPanel/FTP or GitHub Actions FTP in the live path. Frontends are built
+> locally (Node isn't needed on the server) and their static `dist/` is rsynced up; the
+> Laravel backend is rsynced dir-by-dir and `artisan` runs over SSH.
+>
+> The server facts, rsync rules, and post-deploy sequence below were learned the hard way —
+> the "Mistakes & gotchas" section (§9) is required reading before your first deploy. The
+> sibling doc `/Users/himanshuragi/Desktop/Code/personal/hotel-management/DEPLOYMENT.md` is
+> the original source of those lessons for the same server.
+
+---
+
+## 0. Server at a glance (verified 2026-07-09)
+
+```
+SSH   : ssh -i ~/.ssh/id_rsa -p 22 magicman1@45.199.139.15
+Env   : Ubuntu · LiteSpeed (NOT Apache) · PHP 8.2.31 · MariaDB · composer + rsync in /usr/bin
+Base  : /var/www/7cdb3aaf-9f78-4a90-bba7-14c7d98d26f8/
+```
+
+Shared **website container**: you do NOT own the box, there is **no crontab and no queue
+worker** (`crontab` reports "Command unavailable in website container"). Use
+`QUEUE_CONNECTION=sync`; the storefront-rebuild trigger fires inline (see §6).
 
 ---
 
 ## 1. Domain / hosting layout
 
-Three deploy targets on the same cPanel account (one repo, three pipelines):
+Three vhost folders under the base path above (one repo, three deploy targets):
 
-| App | Build output | Deploy target on cPanel | URL |
-|-----|--------------|--------------------------|-----|
-| Storefront (Astro) | `storefront/dist/` (static) | `public_html/` (main domain docroot) | `https://www.shreekrishnacollection.com` |
-| Admin (React/Vite) | `admin/dist/` (static) | subdomain docroot e.g. `admin.shreekrishnacollection.com` → `public_html/admin` or a dedicated subdomain folder | `https://admin.shreekrishnacollection.com` |
-| Backend (Laravel) | full PHP app | a subdomain e.g. `api.shreekrishnacollection.com`; **docroot must point to Laravel's `public/`** | `https://api.shreekrishnacollection.com` |
+| App | Build output | Server folder (under base) | URL |
+|-----|--------------|-----------------------------|-----|
+| Backend (Laravel) | full PHP app (rsync) | `shreeapi.magicmanagement.in/` | `https://shreeapi.magicmanagement.in` |
+| Admin (React/Vite) | `admin/dist/` (static) | `shreeadmin.magicmanagement.in/` | `https://shreeadmin.magicmanagement.in` |
+| Storefront (Astro) | `storefront/dist/` (static) | `shreekrishna.magicmanagement.in/` | `https://shreekrishna.magicmanagement.in` |
 
-In cPanel:
-1. Create subdomains `admin` and `api`.
-2. For **api**, set the subdomain's **Document Root to `.../api/public`** (Laravel serves
-   from `public/`, never expose the app root). If cPanel won't let docroot be a subfolder,
-   place the Laravel app outside webroot and put a thin `index.php`+`.htaccess` in the
-   subdomain docroot pointing to it.
-3. SPAs need SPA-fallback routing: add an `.htaccess` in admin & storefront docroots that
-   rewrites unknown paths to `index.html` (storefront only needs it for client island
-   pages like `/account/*`, `/checkout`; static pages serve directly).
+API base URL: `https://shreeapi.magicmanagement.in/api`.
+
+**Docroot cannot be repointed to a `public/` subfolder** on this host — the vhost folder
+itself is the docroot. So the full Laravel app lives at the vhost root, and a **root
+`.htaccess`** rewrites everything into `public/` (Laravel's own `public/.htaccess` front
+controller stays untouched):
+
+```apache
+# shreeapi.magicmanagement.in/.htaccess  (already in place on the server)
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteRule ^(.*)$ public/$1 [L,QSA]
+</IfModule>
+```
+
+The two static apps hold their build output directly in the vhost root and each ship an
+`.htaccess` (HTTPS + caching; admin also needs SPA fallback to `index.html`).
 
 ---
 
-## 2. Secrets (GitHub repo → Settings → Secrets and variables → Actions)
+## 2. Deploy shell variables
 
-Create these repository secrets:
+Everything below assumes these are set in your shell (paste at the top of a deploy session):
 
-```
-# cPanel FTP (one account or per-target — MilesWeb gives FTP creds in cPanel)
-CPANEL_FTP_HOST            e.g. ftp.shreekrishnacollection.com
-CPANEL_FTP_USER
-CPANEL_FTP_PASSWORD
+```bash
+SSH="ssh -i ~/.ssh/id_rsa -p 22"
+SRV=magicman1@45.199.139.15
+BASE=/var/www/7cdb3aaf-9f78-4a90-bba7-14c7d98d26f8
+API=$BASE/shreeapi.magicmanagement.in
+ADMIN=$BASE/shreeadmin.magicmanagement.in
+STORE=$BASE/shreekrishna.magicmanagement.in
 
-# Per-target remote dirs (relative to FTP user home; confirm exact paths in cPanel)
-STOREFRONT_REMOTE_DIR      e.g. /public_html/
-ADMIN_REMOTE_DIR           e.g. /admin.shreekrishnacollection.com/   (or /public_html/admin/)
-BACKEND_REMOTE_DIR         e.g. /api.shreekrishnacollection.com/
-
-# Build-time env injected into the frontends
-PUBLIC_API_URL            https://api.shreekrishnacollection.com/api
-PUBLIC_SITE_URL           https://www.shreekrishnacollection.com
-PUBLIC_RAZORPAY_KEY_ID    rzp_live_xxx   (public key id only)
-VITE_API_URL              https://api.shreekrishnacollection.com/api
-
-# For the backend → GitHub rebuild trigger (see §6)
-# (this PAT lives in the BACKEND .env on the server, NOT in Actions — see §6)
+# Build-time env for the frontends (injected inline so your local .env is untouched)
+APIURL=https://shreeapi.magicmanagement.in/api
 ```
 
-> If MilesWeb provides **SSH**, prefer it (rsync is faster + atomic) for the backend; FTP
-> is the universal fallback. Examples below use FTP via `SamKirkland/FTP-Deploy-Action`.
+> **rsync source paths must be ABSOLUTE.** The shell cwd resets between steps/tool calls, so
+> a relative `storefront/dist/` can silently point at the wrong place. Use the full repo path.
 
 ---
 
-## 3. Pipeline 1 — Storefront (the auto-rebuild one)
+## 3. Storefront (Astro static)
 
-File: `.github/workflows/deploy-storefront.yml`
+Built locally, rsynced to the vhost root. `--delete` is **safe here** because the whole
+folder is just static build output (it is NOT a Laravel `public/` — see §9 #1).
 
-**Triggers:**
-- `push` to `main` touching `storefront/**` or shared docs,
-- `workflow_dispatch` (manual),
-- **`repository_dispatch` with type `rebuild-storefront`** ← fired by the backend when the
-  catalog changes (this is the on-save rebuild).
+```bash
+cd storefront
+# API URL + site URL baked in at build time; the build fetches the catalog from the live API.
+PUBLIC_API_URL=$APIURL \
+PUBLIC_SITE_URL=https://shreekrishna.magicmanagement.in \
+PUBLIC_RAZORPAY_KEY_ID=rzp_test_T69awRoBGSkEbO \
+  npm run build
 
-```yaml
-name: Deploy Storefront
-on:
-  push:
-    branches: [main]
-    paths: ["storefront/**"]
-  workflow_dispatch:
-  repository_dispatch:
-    types: [rebuild-storefront]
-
-concurrency:                     # collapse rapid rebuilds into the latest
-  group: storefront-deploy
-  cancel-in-progress: true
-
-jobs:
-  build-deploy:
-    runs-on: ubuntu-latest
-    defaults: { run: { working-directory: storefront } }
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 20, cache: npm, cache-dependency-path: storefront/package-lock.json }
-      - run: npm ci
-      - name: Build (fetches catalog from API at build time)
-        env:
-          PUBLIC_API_URL: ${{ secrets.PUBLIC_API_URL }}
-          PUBLIC_SITE_URL: ${{ secrets.PUBLIC_SITE_URL }}
-          PUBLIC_RAZORPAY_KEY_ID: ${{ secrets.PUBLIC_RAZORPAY_KEY_ID }}
-        run: npm run build
-      - name: Deploy to cPanel via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.CPANEL_FTP_HOST }}
-          username: ${{ secrets.CPANEL_FTP_USER }}
-          password: ${{ secrets.CPANEL_FTP_PASSWORD }}
-          local-dir: storefront/dist/
-          server-dir: ${{ secrets.STOREFRONT_REMOTE_DIR }}
-          # FTP-Deploy syncs only changed files (keeps a state file remotely)
+# .htaccess (HTTPS + caching) must already be in dist/ before rsync — keep it in storefront/public/.htaccess
+rsync -avz --delete -e "$SSH" "$(pwd)/dist/" $SRV:$STORE/
 ```
 
-> `concurrency.cancel-in-progress` + the backend-side debounce (§6) means a burst of admin
-> edits results in a single fresh build, not a queue of stale ones.
+> The storefront build hits the live API many times. This host **rate-limits / fail2bans
+> bursts** (see §9 #4) — if a build 429s or the IP gets firewalled, wait and re-run.
 
 ---
 
-## 4. Pipeline 2 — Admin
+## 4. Admin (React/Vite SPA)
 
-File: `.github/workflows/deploy-admin.yml` — same shape, no `repository_dispatch`
-(admin doesn't need auto-rebuild; deploy on push to `admin/**` or manual).
-
-```yaml
-name: Deploy Admin
-on:
-  push: { branches: [main], paths: ["admin/**"] }
-  workflow_dispatch:
-jobs:
-  build-deploy:
-    runs-on: ubuntu-latest
-    defaults: { run: { working-directory: admin } }
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 20, cache: npm, cache-dependency-path: admin/package-lock.json }
-      - run: npm ci
-      - run: npm run build
-        env: { VITE_API_URL: ${{ secrets.VITE_API_URL }} }
-      - uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.CPANEL_FTP_HOST }}
-          username: ${{ secrets.CPANEL_FTP_USER }}
-          password: ${{ secrets.CPANEL_FTP_PASSWORD }}
-          local-dir: admin/dist/
-          server-dir: ${{ secrets.ADMIN_REMOTE_DIR }}
+```bash
+cd admin
+VITE_API_URL=$APIURL VITE_APP_NAME="SKC Admin" npm run build
+# admin/public/.htaccess must include SPA fallback (rewrite unknown paths → index.html) + HTTPS
+rsync -avz --delete -e "$SSH" "$(pwd)/dist/" $SRV:$ADMIN/
 ```
 
-Ship an `.htaccess` (in `admin/public/.htaccess`, copied into dist) for SPA fallback:
+SPA-fallback `.htaccess` (lives in `admin/public/.htaccess`, copied into `dist/` by Vite):
 ```apache
 <IfModule mod_rewrite.c>
   RewriteEngine On
@@ -158,76 +125,53 @@ Ship an `.htaccess` (in `admin/public/.htaccess`, copied into dist) for SPA fall
 
 ---
 
-## 5. Pipeline 3 — Backend (Laravel)
+## 5. Backend (Laravel) — SSH + rsync
 
-File: `.github/workflows/deploy-backend.yml`
+The server is **not** a git repo. Deploy = rsync **one directory at a time** (never multiple
+sources in one command — they dump flat into the root, §9 #2), then run `artisan` over SSH.
+`vendor/` is NOT shipped — the server runs its own `composer install` (platform-matched).
+**Never** rsync `.env`, `storage/`, or `bootstrap/cache/` (§9 #3, #5).
 
-Builds vendor deps + runs tests, then deploys code. **Migrations and cache steps run on
-the server** (cPanel) — either via SSH (preferred) or a one-time/manual `php artisan`
-through cPanel's "Terminal"/cron. Two options:
+```bash
+REPO=/Users/himanshuragi/Desktop/Code/personal/e-commerce-shree-krishna/backend
 
-**Option A — SSH (preferred if MilesWeb gives SSH):**
-```yaml
-name: Deploy Backend
-on:
-  push: { branches: [main], paths: ["backend/**"] }
-  workflow_dispatch:
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    defaults: { run: { working-directory: backend } }
-    steps:
-      - uses: actions/checkout@v4
-      - uses: shivammathur/setup-php@v2
-        with: { php-version: "8.3" }
-      - run: composer install --no-dev --optimize-autoloader --no-interaction
-      - run: cp .env.example .env   # real .env lives on server; tests use this
-      # (optional) run tests against sqlite/mysql service before deploy
-      - name: Upload via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.CPANEL_FTP_HOST }}
-          username: ${{ secrets.CPANEL_FTP_USER }}
-          password: ${{ secrets.CPANEL_FTP_PASSWORD }}
-          local-dir: backend/
-          server-dir: ${{ secrets.BACKEND_REMOTE_DIR }}
-          exclude: |   # never overwrite server secrets/storage
-            **/.env
-            **/storage/**
-            **/.git*/**
-            **/tests/**
-            **/node_modules/**
-      - name: Post-deploy artisan (via SSH)
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_KEY }}
-          script: |
-            cd ${{ secrets.BACKEND_SSH_PATH }}
-            php artisan migrate --force
-            php artisan storage:link || true
-            php artisan config:cache && php artisan route:cache && php artisan view:cache
-            php artisan queue:restart
+# 1. Sync code, one dir → matching target. bootstrap synced WITHOUT its cache/ subdir.
+rsync -avz -e "$SSH" "$REPO/app/"       $SRV:$API/app/
+rsync -avz -e "$SSH" "$REPO/bootstrap/" $SRV:$API/bootstrap/ --exclude=cache/
+rsync -avz -e "$SSH" "$REPO/config/"    $SRV:$API/config/
+rsync -avz -e "$SSH" "$REPO/database/"  $SRV:$API/database/
+rsync -avz -e "$SSH" "$REPO/resources/" $SRV:$API/resources/
+rsync -avz -e "$SSH" "$REPO/routes/"    $SRV:$API/routes/
+# composer.json/lock only when deps changed:
+rsync -avz -e "$SSH" "$REPO/composer.json" "$REPO/composer.lock" $SRV:$API/
+
+# 2. If composer.lock changed, refresh vendor ON THE SERVER (never rsync vendor/):
+$SSH $SRV "cd $API && composer install --no-dev --optimize-autoloader --no-interaction"
+
+# 3. Delete stale bootstrap cache, migrate, clear caches, rediscover packages.
+#    (Local bootstrap/cache references dev pkgs like laravel/pail that aren't on the server.)
+$SSH $SRV "cd $API && rm -f bootstrap/cache/services.php bootstrap/cache/packages.php \
+  && php artisan migrate --force \
+  && php artisan config:clear && php artisan route:clear && php artisan cache:clear \
+  && php artisan package:discover --ansi"
+
+# 4. Ensure the storage symlink exists (see §9 #6 for the real-dir gotcha).
+$SSH $SRV "cd $API && php artisan storage:link 2>&1 || true"
 ```
 
-**Option B — FTP only (no SSH):** deploy files via FTP, then run
-`php artisan migrate --force` + cache commands manually via cPanel **Terminal**, or set a
-cPanel **cron job** that runs them. Document the exact commands in the repo
-(`backend/DEPLOY_NOTES.md`). The first deploy always needs a manual `.env` + `key:generate`
-+ `migrate --seed` on the server.
+> **`bootstrap/app.php`** registers middleware aliases — it lives in `bootstrap/` and IS
+> synced by step 1 (we only exclude `bootstrap/cache/`). Forgetting it → 500 on every route
+> with "Target class [...] does not exist" (§9 hotel-management lesson #3).
 
-### Backend server setup (one-time, in cPanel)
-1. Create MySQL DB + user (cPanel → MySQL Databases); put creds in server `.env`.
-2. Upload code; create `.env` from `.env.example`; `php artisan key:generate`.
-3. Point `api` subdomain docroot to `backend/public`.
-4. `php artisan migrate --seed`; `php artisan storage:link`; set `storage/` + `bootstrap/
-   cache/` writable (755/775).
-5. Set `APP_ENV=production`, `APP_DEBUG=false`, real Razorpay keys, CORS origins, and the
-   GitHub rebuild PAT (see §6) in `.env`.
-6. If using queues for the debounced rebuild, set up a cron running
-   `php artisan schedule:run` every minute (cPanel cron), or use `QUEUE_CONNECTION=sync`
-   for simplicity in v1.
+### Backend server setup (one-time — already done, for reference)
+1. MySQL DB `magicman1_shreekrishna` (name = user), host `localhost`, created in mPanel.
+   Password has shell-special chars → in `.env` it MUST be double-quoted: `DB_PASSWORD="..."`.
+2. `.env` created from `.env.example`; `php artisan key:generate`; `APP_ENV=production`,
+   `APP_DEBUG=false`, real/test Razorpay keys, CORS origins, storefront-rebuild vars (§6).
+3. Vhost root holds the full Laravel app + the root `.htaccess` rewrite into `public/` (§1).
+4. `php artisan migrate` (do NOT run `--seed` in prod — `ProductSeeder` uses `faker` which is
+   `require-dev` and absent under `--no-dev`; it would crash. Real products come from admin).
+5. `php artisan storage:link`; `storage/` + `bootstrap/cache/` writable (775).
 
 ---
 
@@ -298,33 +242,53 @@ client code, never in the admin app). Rotate if leaked.
 
 ---
 
-## 8. Environments & first-deploy order
+## 8. Deploy order (routine redeploys — all three apps already live)
 
-1. **Backend first** — provision DB, deploy, `.env`, `migrate --seed`, verify
-   `https://api.../api/products` returns JSON. Without this, frontends can't build.
-2. **Storefront** — set Actions secrets, run the workflow, verify static site loads and
-   product pages render with data + correct SEO tags.
-3. **Admin** — deploy, log in as seeded admin, verify CRUD + that saving a product fires a
-   storefront rebuild (watch the Actions tab).
-4. Configure Razorpay live keys + webhook URL (`/api/webhooks/razorpay`) in the Razorpay
-   dashboard.
+1. **Backend first** (§5) — rsync code, `composer install` if deps changed, `migrate --force`,
+   clear caches. Verify `https://shreeapi.magicmanagement.in/api/products` returns JSON.
+2. **Storefront** (§3) — the build fetches the catalog from the live API, so the backend must
+   be up and correct first. Verify the site loads and product pages render.
+3. **Admin** (§4) — verify login + CRUD.
+4. First-time only: Razorpay keys + webhook `https://shreeapi.magicmanagement.in/api/webhooks/razorpay`.
 
 ---
 
-## 9. Rollback & safety
-- FTP-Deploy keeps changed-file sync; to roll back, re-run a previous commit's workflow
-  (`workflow_dispatch` on an older ref) — rebuilds from that code.
-- Never let a failed build deploy: each workflow deploys only if build steps succeed.
-- Back up the MySQL DB (cPanel → Backup) before running new migrations on production.
-- Keep `APP_DEBUG=false` in production. Monitor `storage/logs/laravel.log`.
+## 9. Mistakes & gotchas (this exact server — read before deploying)
+
+Learned the hard way on this LiteSpeed box (and its sibling in hotel-management's DEPLOYMENT.md).
+
+1. **Never `rsync --delete` into a Laravel `public/`.** It wipes `index.php`, `.htaccess`, and
+   the `storage` symlink → instant 404/500. `--delete` is only safe on the *static* storefront
+   and admin vhost roots, which are pure build output.
+2. **rsync one dir at a time, source→matching target.** Multiple sources in one command
+   (`rsync a/ b/ c/ $SRV:$API/`) dump every file flat into the project root.
+3. **Never sync `bootstrap/cache/`.** Local cache references dev-only packages (`laravel/pail`);
+   the server doesn't have them → every `php artisan` dies with "Class ... not found". Delete
+   the stale cache files on the server and let `package:discover` regenerate them.
+4. **Host rate-limits / firewalls connection bursts** (fail2ban-style) and the app rate-limits
+   public routes (120/min/IP → HTTP 429). A storefront build fires many concurrent API calls;
+   if it 429s or your IP gets curl→000 / SSH-timeout, wait a few minutes and retry. Don't hammer.
+5. **`.env` and `storage/` live on the server — never overwrite them.** After any `.env` edit,
+   run `php artisan config:clear` on the server or the change won't take effect.
+6. **`storage:link` after deploy.** LiteSpeed *does* follow the symlink once it's made correctly.
+   If `public/storage` is a real directory (not a symlink), uploads become invisible — `rm -rf`
+   it and re-run `php artisan storage:link`. Verify with `ls -la public/storage` (want `lrwxrwxrwx`).
+7. **WAF blocks `settings`/`public`-ish public paths → HTTP 444/blocked.** `/api/settings/public`
+   was blocked; the route is now `/api/site-config`. Avoid those words in new public routes.
+8. **No cron, no queue worker** in this container. `QUEUE_CONNECTION=sync`; the storefront-rebuild
+   trigger runs inline (§6). Don't rely on `schedule:run`/queue daemons.
+9. **Don't `migrate --seed` in prod.** `ProductSeeder` uses `faker` (require-dev, absent under
+   `--no-dev`) → crash. Real products come from the admin panel.
+10. **Back up the DB before migrations that drop/alter columns.** `mysqldump magicman1_shreekrishna
+    > backup.sql` on the server first; a dropped column is not recoverable from code.
 
 ---
 
-## 10. Checklist for the implementer
-- [ ] Create `api` + `admin` subdomains; point `api` docroot to `backend/public`.
-- [ ] Add all GitHub Actions secrets (§2).
-- [ ] Commit the three workflow files (§3–§5) + `.htaccess` files.
-- [ ] One-time backend server setup (§5) incl. `.env`, key, migrate, storage:link, SSL.
-- [ ] Put `GITHUB_REPO` + fine-grained `GITHUB_DISPATCH_TOKEN` in backend `.env`; verify
-      editing a product triggers the `rebuild-storefront` workflow.
-- [ ] Verify HTTPS on all three hostnames; CORS correct; Razorpay webhook configured.
+## 10. Redeploy checklist
+- [ ] Back up DB if the deploy includes destructive migrations (§9 #10).
+- [ ] Backend: rsync dirs (§5 step 1), `composer install` if `composer.lock` changed, run the
+      artisan block (migrate + clear caches + package:discover), `storage:link`.
+- [ ] Verify `…/api/products` returns JSON before building frontends.
+- [ ] Storefront + admin: build with `PUBLIC_API_URL`/`VITE_API_URL` = the live API, rsync `dist/`.
+- [ ] Smoke-test: storefront loads with data, admin login + a product edit, checkout (COD + online).
+- [ ] `APP_DEBUG=false`; watch `storage/logs/laravel.log` for the first few minutes.

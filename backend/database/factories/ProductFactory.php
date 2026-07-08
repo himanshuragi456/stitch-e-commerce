@@ -20,13 +20,11 @@ class ProductFactory extends Factory
         $materials = ['Cotton', 'Linen', 'Cotton Blend', 'Silk Blend', 'Poly Cotton', 'Khadi', 'Tencel'];
         $patterns = ['Solid', 'Checked', 'Striped', 'Printed', 'Textured', 'Self-design'];
         $colors = [
-            ['Sky Blue', '#8EC5E8'], ['Charcoal', '#36454F'], ['Ivory', '#FFFFF0'],
-            ['Maroon', '#800000'], ['Olive', '#708238'], ['Navy', '#1F2A44'],
-            ['Sand', '#C2B280'], ['Black', '#1A1A1A'], ['Mustard', '#C9A227'],
-            ['Sage', '#9CAF88'], ['Rust', '#B7410E'], ['Powder Pink', '#F4C2C2'],
+            'Sky Blue', 'Charcoal', 'Ivory', 'Maroon', 'Olive', 'Navy',
+            'Sand', 'Black', 'Mustard', 'Sage', 'Rust', 'Powder Pink',
         ];
 
-        [$colorName, $colorHex] = $this->faker->randomElement($colors);
+        $colorName = $this->faker->randomElement($colors);
         $material = $this->faker->randomElement($materials);
         $pattern = $this->faker->randomElement($patterns);
         $use = $this->faker->randomElement(IntendedUse::cases());
@@ -45,7 +43,6 @@ class ProductFactory extends Factory
             'intended_use' => $use,
             'material' => $material,
             'color' => $colorName,
-            'color_hex' => $colorHex,
             'pattern' => $pattern,
             'price_per_metre_paise' => $perMetre,
             'compare_at_per_metre_paise' => $hasDiscount ? (int) round($perMetre * 1.2) : null,

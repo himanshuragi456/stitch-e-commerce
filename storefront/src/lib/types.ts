@@ -35,7 +35,6 @@ export interface ProductListItem {
   intended_use: IntendedUse;
   material: string | null;
   color: string | null;
-  color_hex: string | null;
   pattern: string | null;
   primary_image: ProductImage | null;
   price_per_metre_paise: number;
@@ -174,4 +173,20 @@ export interface CustomerOrder {
   notes: string | null;
   placed_at: string;
   items: CustomerOrderItem[];
+}
+
+export type PaymentMethod = 'razorpay' | 'cod';
+
+/** Gateway payload returned by POST /checkout when payment_method is 'razorpay'. */
+export interface RazorpayHandoff {
+  key_id: string;
+  razorpay_order_id: string;
+  amount_paise: number;
+  currency: string;
+}
+
+/** Response shape of POST /checkout: the created order plus optional gateway handoff. */
+export interface CheckoutResult {
+  order: CustomerOrder;
+  razorpay: RazorpayHandoff | null;
 }

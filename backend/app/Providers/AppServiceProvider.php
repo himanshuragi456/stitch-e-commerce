@@ -2,6 +2,9 @@
 
 namespace App\Providers;
 
+use App\Contracts\PaymentGateway;
+use App\Services\RazorpayGateway;
+use Illuminate\Auth\Middleware\Authenticate;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -11,11 +14,18 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        //
+        $this->app->bind(PaymentGateway::class, RazorpayGateway::class);
     }
 
     public function boot(): void
     {
+        // API routes never redirect to login — always return 401 JSON.
+        Authenticate::redirectUsing(function (Request $request) {
+            if ($request->is('api/*')) {
+                return null;
+            }
+        });
+
         $this->configureRateLimiters();
     }
 

@@ -6,7 +6,7 @@ import ProductGallery from '../../components/islands/ProductGallery';
 import LengthSelector from '../../components/islands/LengthSelector';
 import ProductJsonLd from '../../components/seo/ProductJsonLd.astro';
 import { api } from '../../lib/api';
-import { fabricFallback, fabricBase } from '../../lib/images';
+import { fabricFallback } from '../../lib/images';
 import type { ProductDetail } from '../../lib/types';
 
 export async function getStaticPaths() {
@@ -43,10 +43,8 @@ const primaryImage =
   product?.images?.[0] ??
   null;
 
-// Use the white fabric base (tintable) when the product has a color_hex, else random swatch.
-const fallbackSrc = product?.color_hex
-  ? fabricBase({ w: 720, h: 900 })
-  : fabricFallback(slug, { w: 720, h: 900 });
+// Fabric swatch fallback when the product has no real photo.
+const fallbackSrc = fabricFallback(slug, { w: 720, h: 900 });
 const ogImage = primaryImage?.url ?? fallbackSrc;
 
 const title =
@@ -104,7 +102,6 @@ const intendedUseBadge = product?.intended_use
               images={product.images ?? []}
               productName={product.name}
               fallbackSrc={fallbackSrc}
-              colorHex={product.color_hex}
             />
           </div>
 
@@ -134,13 +131,6 @@ const intendedUseBadge = product?.intended_use
               {[product.material, product.pattern].filter(Boolean).join(' · ')}
               {product.color && (
                 <span class="ml-2 inline-flex items-center gap-1.5">
-                  {product.color_hex && (
-                    <span
-                      class="inline-block h-3 w-3 rounded-full border border-[var(--color-border)]"
-                      style={`background:${product.color_hex}`}
-                      aria-hidden="true"
-                    />
-                  )}
                   {product.color}
                 </span>
               )}
