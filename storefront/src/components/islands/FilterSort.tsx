@@ -337,7 +337,7 @@ export default function FilterSort({
 
       {/* Product grid */}
       <div
-        className={`grid grid-cols-2 gap-x-4 gap-y-8 transition-opacity duration-200 md:grid-cols-3 lg:grid-cols-4 ${
+        className={`grid grid-cols-2 gap-x-5 gap-y-8 transition-opacity duration-200 sm:gap-x-4 md:grid-cols-3 lg:grid-cols-4 ${
           loading ? 'opacity-50 pointer-events-none' : 'opacity-100'
         }`}
       >

@@ -108,7 +108,13 @@ const track = [...brands, ...brands];
   .ticker-item {
     display: inline-flex;
     align-items: center;
-    padding-inline: 2.5rem;
+    padding-inline: 1.5rem;
+  }
+
+  @media (min-width: 640px) {
+    .ticker-item {
+      padding-inline: 2.5rem;
+    }
   }
 
   .brand-logo {

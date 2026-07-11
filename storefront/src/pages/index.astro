@@ -154,7 +154,7 @@ const storyImage = STORY_IMAGE;
         </div>
 
         <!-- Floating stat cards row -->
-        <div class="mt-10 flex flex-wrap gap-3">
+        <div class="hero-stats mt-10 flex flex-wrap gap-3">
           <div class="float-card float-card-1 flex items-center gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]/90 px-4 py-3 shadow-[var(--shadow-md)] backdrop-blur-sm">
             <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--color-accent)]/15 text-[var(--color-accent)]">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.3 8.7 8.7 21.3a1 1 0 0 1-1.4 0l-4.6-4.6a1 1 0 0 1 0-1.4L15.3 2.7a1 1 0 0 1 1.4 0l4.6 4.6a1 1 0 0 1 0 1.4Z"/><path d="m7.5 10.5 2 2"/><path d="m10.5 7.5 2 2"/></svg>
@@ -309,7 +309,7 @@ const storyImage = STORY_IMAGE;
             View all
           </a>
         </div>
-        <div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
+        <div class="grid grid-cols-2 gap-5 sm:gap-4 md:grid-cols-3 lg:grid-cols-5">
           {categories.slice(0, 5).map((c) => (
             <a
               href={`/category/${c.slug}`}
@@ -356,7 +356,7 @@ const storyImage = STORY_IMAGE;
               A curated edit of fabrics our tailors keep coming back to.
             </p>
           </div>
-          <div class="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-4">
+          <div class="grid grid-cols-2 gap-x-5 gap-y-8 sm:gap-x-4 md:grid-cols-4">
             {featured.map((p) => (
               <ProductCard product={p} />
             ))}
@@ -396,7 +396,7 @@ const storyImage = STORY_IMAGE;
         <div class="mb-8 flex items-end justify-between">
           <h2 class="text-2xl sm:text-3xl">New arrivals</h2>
         </div>
-        <div class="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 lg:grid-cols-4">
+        <div class="grid grid-cols-2 gap-x-5 gap-y-8 sm:gap-x-4 md:grid-cols-3 lg:grid-cols-4">
           {newArrivals.map((p) => (
             <ProductCard product={p} />
           ))}
@@ -646,5 +646,24 @@ const storyImage = STORY_IMAGE;
       -webkit-text-fill-color: var(--color-primary);
       background: none;
     }
+  }
+
+  /* ── Mobile: unsquish the hero ── */
+  @media (max-width: 767px) {
+    /* The overlay cards use negative offsets to hang off the image; on a narrow
+       screen they clip and crowd the edges. They're decorative — drop them. */
+    .float-overlay { display: none; }
+
+    /* Stack the three stat cards full-width instead of wrapping into a cramped
+       cluster. */
+    .hero-stats {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.625rem;
+    }
+    .hero-stats .float-card { width: 100%; }
+
+    /* Give the image room and let its glow breathe. */
+    .hero-image-wrap { margin-inline: 0.25rem; }
   }
 </style>
