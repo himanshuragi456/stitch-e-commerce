@@ -98,18 +98,33 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('razorpay');
 
   const loadCart = useCallback(async () => {
-    if (!token) { setLoading(false); return; }
+    // A logged-in customer resolves their own cart server-side; a guest needs
+    // the X-Cart-Token. During nanostore hydration `token` can briefly be '' —
+    // don't render "empty" in that window, just wait for the token to arrive.
+    if (!token && !authToken) { return; }
     try {
-      const res = await api.cart.get(token);
+      // If a guest added items and then logged in, fold the guest cart into the
+      // customer cart before reading it — otherwise checkout sees "empty".
+      if (authToken && token) {
+        await api.cart.merge(token, authToken).catch(() => {});
+      }
+      const res = await api.cart.get(token, authToken || undefined);
       setCart(res.data);
     } catch {
       setCart(null);
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, authToken]);
 
   useEffect(() => { loadCart(); }, [loadCart]);
+
+  // Safety net: if the store never hydrates a token (e.g. cart truly empty),
+  // stop the spinner after a moment so the empty state can show.
+  useEffect(() => {
+    const t = setTimeout(() => setLoading(false), 1500);
+    return () => clearTimeout(t);
+  }, []);
 
   // Pre-fill from logged-in customer
   useEffect(() => {

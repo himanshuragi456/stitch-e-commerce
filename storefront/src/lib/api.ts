@@ -142,13 +142,19 @@ export const api = {
   // ── Cart ────────────────────────────────────────────────────────────────────
 
   cart: {
-    get: (cartToken: string) =>
-      fetch(`${BASE_URL}/cart`, {
-        headers: { Accept: 'application/json', 'X-Cart-Token': cartToken },
-      }).then<Wrapped<Cart>>((r) => r.json()),
+    get: (cartToken: string, authToken?: string) => {
+      const headers: Record<string, string> = { Accept: 'application/json' };
+      if (cartToken) headers['X-Cart-Token'] = cartToken;
+      if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+      return fetch(`${BASE_URL}/cart`, { headers }).then<Wrapped<Cart>>((r) => r.json());
+    },
 
     addItem: (cartToken: string, body: { product_id: string; length_metres: string; quantity: number }) =>
       post<Wrapped<Cart>>('/cart/items', body, { cartToken }),
+
+    // Merge a guest cart into the logged-in customer's cart.
+    merge: (guestCartToken: string, authToken: string) =>
+      post<Wrapped<Cart>>('/cart/merge', { guest_cart_token: guestCartToken }, { authToken }),
 
     updateItem: (cartToken: string, itemId: string, quantity: number) =>
       patch<Wrapped<Cart>>(`/cart/items/${itemId}`, { quantity }, { cartToken }),
