@@ -19,6 +19,13 @@ import soktas from '../assets/brands/soktas.svg';
 interface Brand {
   name: string;
   src: ImageMetadata;
+  /**
+   * Per-logo rendering fix for odd source assets:
+   *  - 'knockout-white': raster logo with a baked-in white background — multiply
+   *    blend it against the light surface so the white box disappears.
+   *  - 'invert': a white-fill logo (invisible on light bg) — invert to black.
+   */
+  variant?: 'knockout-white' | 'invert';
 }
 
 interface Props {
@@ -30,9 +37,9 @@ const {
   brands = [
     { name: 'Tessitura Monti India', src: monti },
     { name: 'Luthai', src: luthai },
-    { name: 'J.Hampstead Italy', src: jhampstead },
+    { name: 'J.Hampstead Italy', src: jhampstead, variant: 'knockout-white' },
     { name: 'Georgia Gullini Italy', src: georgiaGullini },
-    { name: 'Baruche', src: baruche },
+    { name: 'Baruche', src: baruche, variant: 'invert' },
     { name: 'Arvind', src: arvind },
     { name: "Siyaram's", src: siyarams },
     { name: 'Aditya Birla Grasim', src: grasim },
@@ -61,7 +68,7 @@ const track = [...brands, ...brands];
             <img
               src={brand.src.src}
               alt={brand.name}
-              class="brand-logo"
+              class:list={['brand-logo', brand.variant && `is-${brand.variant}`]}
               loading="lazy"
               decoding="async"
               aria-hidden={i >= brands.length ? 'true' : undefined}
@@ -106,9 +113,9 @@ const track = [...brands, ...brands];
 
   .brand-logo {
     /* Uniform height flattens the mixed source aspect ratios into one clean row. */
-    height: 2.25rem;
+    height: 2.75rem;
     width: auto;
-    max-width: 160px;
+    max-width: 220px;
     object-fit: contain;
     /* Desaturate + dim so multi-colored logos read as one calm set; color on hover. */
     filter: grayscale(1);
@@ -118,9 +125,21 @@ const track = [...brands, ...brands];
 
   @media (min-width: 640px) {
     .brand-logo {
-      height: 2.75rem;
-      max-width: 190px;
+      height: 3.25rem;
+      max-width: 260px;
     }
+  }
+
+  /* J.Hampstead: raster logo with a baked-in white background. Multiply against
+     the light surface so the white box vanishes, leaving just the mark. */
+  .brand-logo.is-knockout-white {
+    mix-blend-mode: multiply;
+  }
+
+  /* Baruche: a white-fill logo (invisible on a light bg). Invert to black.
+     grayscale first keeps it consistent with the rest of the row. */
+  .brand-logo.is-invert {
+    filter: grayscale(1) invert(1);
   }
 
   /* Pause + spotlight the hovered logo. */
@@ -129,6 +148,11 @@ const track = [...brands, ...brands];
   }
   .ticker-item:hover .brand-logo {
     filter: grayscale(0);
+    opacity: 1;
+  }
+  /* Keep the inverted logo black on hover (don't un-invert it). */
+  .ticker-item:hover .brand-logo.is-invert {
+    filter: grayscale(0) invert(1);
     opacity: 1;
   }
 
