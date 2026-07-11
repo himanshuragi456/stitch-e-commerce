@@ -1,24 +1,42 @@
 ---
-// Infinite marquee of the mill / fabric brands we stock. Rendered as styled
-// wordmarks (not logo images) so it always renders in the static build with no
-// external assets, and stays crisp at any size. The track is duplicated once so
-// the CSS translate(-50%) loop is seamless.
+// Infinite marquee of the mill / fabric brands we stock, rendered as their real
+// logos. Each logo is imported as a bundled asset (SVG passes through, PNG gets a
+// hashed URL) so it ships with the static build — no external requests at runtime.
+// The logos come from mixed sources (different colors, backgrounds, aspect ratios),
+// so we normalize them: fixed height, grayscale + reduced opacity by default, and
+// full color on hover. The track is duplicated once so the CSS translate(-50%)
+// loop is seamless.
+import monti from '../assets/brands/monti.png';
+import luthai from '../assets/brands/luthai.png';
+import jhampstead from '../assets/brands/jhampstead.png';
+import georgiaGullini from '../assets/brands/georgia-gullini.png';
+import baruche from '../assets/brands/baruche.svg';
+import arvind from '../assets/brands/arvind.svg';
+import siyarams from '../assets/brands/siyarams.svg';
+import grasim from '../assets/brands/grasim.png';
+import soktas from '../assets/brands/soktas.svg';
+
+interface Brand {
+  name: string;
+  src: ImageMetadata;
+}
+
 interface Props {
-  brands?: string[];
+  brands?: Brand[];
   label?: string;
 }
 
 const {
   brands = [
-    'Tessitura Monti India',
-    'Luthai',
-    'J.Hampstead Italy',
-    'Georgia Gullini Italy',
-    'Baruche',
-    'Arvind',
-    "Siyaram's",
-    'Aditya Birla Grasim',
-    'Aditya Birla Soktas',
+    { name: 'Tessitura Monti India', src: monti },
+    { name: 'Luthai', src: luthai },
+    { name: 'J.Hampstead Italy', src: jhampstead },
+    { name: 'Georgia Gullini Italy', src: georgiaGullini },
+    { name: 'Baruche', src: baruche },
+    { name: 'Arvind', src: arvind },
+    { name: "Siyaram's", src: siyarams },
+    { name: 'Aditya Birla Grasim', src: grasim },
+    { name: 'Aditya Birla Soktas', src: soktas },
   ],
   label = 'Woven with cloth from the world’s finest mills',
 } = Astro.props;
@@ -32,15 +50,22 @@ const track = [...brands, ...brands];
   aria-label="Fabric brands we stock"
 >
   <div class="container-content py-7">
-    <p class="mb-5 text-center text-[11px] font-medium uppercase tracking-[0.24em] text-[var(--color-ink-muted)]">
+    <p class="mb-6 text-center text-[11px] font-medium uppercase tracking-[0.24em] text-[var(--color-ink-muted)]">
       {label}
     </p>
 
-    <div class="ticker-mask relative overflow-hidden" aria-hidden="true">
+    <div class="ticker-mask relative overflow-hidden">
       <div class="ticker-track flex w-max items-center">
-        {track.map((brand) => (
-          <span class="ticker-item font-[var(--font-heading)] text-xl font-medium tracking-tight text-[var(--color-ink)]/70 sm:text-2xl">
-            {brand}
+        {track.map((brand, i) => (
+          <span class="ticker-item" title={brand.name}>
+            <img
+              src={brand.src.src}
+              alt={brand.name}
+              class="brand-logo"
+              loading="lazy"
+              decoding="async"
+              aria-hidden={i >= brands.length ? 'true' : undefined}
+            />
           </span>
         ))}
       </div>
@@ -50,7 +75,7 @@ const track = [...brands, ...brands];
 
 <style>
   .ticker-mask {
-    /* Fade the edges so brands slide in/out of a soft gradient, not a hard cut. */
+    /* Fade the edges so logos slide in/out of a soft gradient, not a hard cut. */
     -webkit-mask-image: linear-gradient(
       to right,
       transparent,
@@ -74,17 +99,36 @@ const track = [...brands, ...brands];
   }
 
   .ticker-item {
-    padding-inline: 2.25rem;
-    white-space: nowrap;
-    transition: color 200ms ease, opacity 200ms ease;
+    display: inline-flex;
+    align-items: center;
+    padding-inline: 2.5rem;
   }
 
-  /* Pause + spotlight the hovered wordmark. */
+  .brand-logo {
+    /* Uniform height flattens the mixed source aspect ratios into one clean row. */
+    height: 2.25rem;
+    width: auto;
+    max-width: 160px;
+    object-fit: contain;
+    /* Desaturate + dim so multi-colored logos read as one calm set; color on hover. */
+    filter: grayscale(1);
+    opacity: 0.55;
+    transition: filter 200ms ease, opacity 200ms ease;
+  }
+
+  @media (min-width: 640px) {
+    .brand-logo {
+      height: 2.75rem;
+      max-width: 190px;
+    }
+  }
+
+  /* Pause + spotlight the hovered logo. */
   .brand-ticker:hover .ticker-track {
     animation-play-state: paused;
   }
-  .ticker-item:hover {
-    color: var(--color-primary);
+  .ticker-item:hover .brand-logo {
+    filter: grayscale(0);
     opacity: 1;
   }
 
@@ -102,6 +146,7 @@ const track = [...brands, ...brands];
       animation: none;
       flex-wrap: wrap;
       justify-content: center;
+      gap: 0.5rem 0;
     }
   }
 </style>
