@@ -56,7 +56,8 @@ export default function ProductsListPage() {
     onSettled: () => setTogglingId(null),
   });
 
-  const catOptions = (cats?.data ?? []).map((c) => ({ value: c.id, label: c.name }));
+  // Backend filters products by category SLUG (not id), so the filter value is the slug.
+  const catOptions = (cats?.data ?? []).map((c) => ({ value: c.slug, label: c.name }));
 
   return (
     <div>
