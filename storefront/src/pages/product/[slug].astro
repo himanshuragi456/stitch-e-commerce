@@ -4,6 +4,7 @@ import Breadcrumbs from '../../components/layout/Breadcrumbs.astro';
 import ProductCard from '../../components/product/ProductCard.astro';
 import ProductGallery from '../../components/islands/ProductGallery';
 import LengthSelector from '../../components/islands/LengthSelector';
+import ProductFomo from '../../components/islands/ProductFomo';
 import ProductJsonLd from '../../components/seo/ProductJsonLd.astro';
 import { api } from '../../lib/api';
 import { fabricFallback } from '../../lib/images';
@@ -137,6 +138,9 @@ const intendedUseBadge = product?.intended_use
             </p>
 
             <hr class="border-[var(--color-border)]" />
+
+            {/* FOMO urgency (random, client-side) — only while in stock */}
+            {product.in_stock && <ProductFomo client:idle />}
 
             {/* Length selector + add to cart (React island) */}
             <LengthSelector client:load {product} />

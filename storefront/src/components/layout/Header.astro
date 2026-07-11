@@ -13,10 +13,27 @@ const navCats = categories.slice(0, 5);
 <header
   class="sticky top-0 z-40 border-b border-[var(--color-border)] bg-[var(--color-bg)]/85 backdrop-blur-md"
 >
-  <div class="container-content flex h-[72px] items-center justify-between gap-6">
-    <Logo />
+  <div class="container-content flex h-[72px] items-center gap-4">
+    <!-- Mobile: hamburger (left) -->
+    <button
+      id="nav-toggle"
+      type="button"
+      class="btn btn-ghost h-10 w-10 shrink-0 !p-0 lg:hidden"
+      aria-label="Open menu"
+      aria-expanded="false"
+      aria-controls="mobile-nav"
+    >
+      <svg class="nav-icon-open" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      <svg class="nav-icon-close hidden" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
 
-    <nav class="hidden items-center gap-7 lg:flex" aria-label="Primary">
+    <!-- Logo: left on desktop, centered on mobile -->
+    <div class="flex flex-1 justify-center lg:flex-none lg:justify-start">
+      <Logo />
+    </div>
+
+    <!-- Desktop nav -->
+    <nav class="hidden flex-1 items-center gap-7 lg:flex" aria-label="Primary">
       {
         navCats.map((c) => (
           <a
@@ -30,11 +47,11 @@ const navCats = categories.slice(0, 5);
       }
     </nav>
 
-    <div class="flex items-center gap-1">
-      <a href="/search" class="btn btn-ghost h-10 w-10 !p-0" aria-label="Search">
+    <div class="flex shrink-0 items-center gap-1">
+      <a href="/search" class="btn btn-ghost hidden h-10 w-10 !p-0 sm:flex" aria-label="Search">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
       </a>
-      <a href="/account" class="btn btn-ghost h-10 w-10 !p-0" aria-label="Account">
+      <a href="/account" class="btn btn-ghost hidden h-10 w-10 !p-0 sm:flex" aria-label="Account">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
       </a>
       <a href="/cart" class="btn btn-ghost relative h-10 w-10 !p-0" aria-label="Cart">
@@ -43,4 +60,43 @@ const navCats = categories.slice(0, 5);
       </a>
     </div>
   </div>
+
+  <!-- Mobile slide-down nav panel -->
+  <nav
+    id="mobile-nav"
+    class="hidden border-t border-[var(--color-border)] bg-[var(--color-bg)] lg:hidden"
+    aria-label="Mobile"
+  >
+    <div class="container-content flex flex-col py-2">
+      {
+        navCats.map((c) => (
+          <a
+            href={`/category/${c.slug}`}
+            class="border-b border-[var(--color-border)]/60 py-3 text-center text-[15px] font-medium text-[var(--color-ink)] transition-colors hover:text-[var(--color-primary)]"
+          >
+            {c.name}
+          </a>
+        ))
+      }
+      <div class="flex justify-center gap-6 py-4">
+        <a href="/search" class="text-sm font-medium text-[var(--color-ink-muted)]">Search</a>
+        <a href="/account" class="text-sm font-medium text-[var(--color-ink-muted)]">Account</a>
+      </div>
+    </div>
+  </nav>
 </header>
+
+<script>
+  const toggle = document.getElementById('nav-toggle');
+  const panel = document.getElementById('mobile-nav');
+  const openIcon = toggle?.querySelector('.nav-icon-open');
+  const closeIcon = toggle?.querySelector('.nav-icon-close');
+
+  toggle?.addEventListener('click', () => {
+    const isOpen = panel?.classList.toggle('hidden') === false;
+    toggle.setAttribute('aria-expanded', String(isOpen));
+    toggle.setAttribute('aria-label', isOpen ? 'Close menu' : 'Open menu');
+    openIcon?.classList.toggle('hidden', isOpen);
+    closeIcon?.classList.toggle('hidden', !isOpen);
+  });
+</script>

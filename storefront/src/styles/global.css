@@ -148,6 +148,22 @@
       padding-inline: 2rem;
     }
   }
+
+  /* ── Mobile: center body text across the site ──
+     Headings, paragraphs and section intros read centered on phones. Scoped to
+     page <main> so the header nav, footer columns and interactive controls keep
+     their own alignment. Opt out on any element with the `text-left-mobile`
+     class (e.g. product-card meta that should stay left). */
+  @media (max-width: 639px) {
+    main :where(h1, h2, h3, h4, p, .section-intro, blockquote):not(.text-left-mobile) {
+      text-align: center;
+    }
+    /* Center the flex wrappers that hold hero CTAs / badges so they don't hug
+       the left edge once their text is centered. */
+    main .hero-reveal > .badge-pill {
+      margin-inline: auto;
+    }
+  }
 }
 
 

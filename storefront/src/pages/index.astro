@@ -62,24 +62,6 @@ const trustItems = [
   },
 ];
 
-const steps = [
-  {
-    n: '01',
-    title: 'Choose your fabric',
-    body: 'Browse shirting, suiting, kurta and ethnic cloth — filter by colour, material and pattern.',
-  },
-  {
-    n: '02',
-    title: 'Pick your length',
-    body: 'Select 1.25 m, 1.50 m or more. You pay the per-metre price for exactly what you need.',
-  },
-  {
-    n: '03',
-    title: 'Get it stitched',
-    body: 'We ship the unstitched cloth to your door — hand it to your tailor and make it yours.',
-  },
-];
-
 const promises = [
   {
     title: 'Curated, not endless',
@@ -245,62 +227,11 @@ const storyImage = STORY_IMAGE;
   <!-- YouTube style suggestion -->
   {styleVideo?.enabled && styleVideo.youtube_id && <StyleVideo video={styleVideo} />}
 
-  <!-- Customer reviews (WhatsApp screenshots) -->
-  <section class="border-t border-[var(--color-border)] bg-[var(--color-surface)]">
-    <div class="container-content py-16">
-      <div class="mb-10 max-w-lg">
-        <span class="text-xs font-medium uppercase tracking-[0.22em] text-[var(--color-accent)]">Real customers</span>
-        <h2 class="mt-3 text-2xl sm:text-3xl">What they're saying</h2>
-        <p class="mt-2 text-sm text-[var(--color-ink-muted)]">Straight from their WhatsApp — unedited.</p>
-      </div>
-      <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {[
-          { name: 'Priya M.', location: 'Mumbai', stars: 5, img: null },
-          { name: 'Rahul S.', location: 'Bangalore', stars: 5, img: null },
-          { name: 'Anjali K.', location: 'Delhi', stars: 5, img: null },
-        ].map((r) => (
-          <div class="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg)] shadow-[var(--shadow-sm)]">
-            {r.img ? (
-              <img
-                src={r.img}
-                alt={`WhatsApp review from ${r.name}`}
-                loading="lazy"
-                decoding="async"
-                class="w-full rounded-t-[var(--radius-lg)] object-cover"
-              />
-            ) : (
-              <div class="flex min-h-[160px] items-end justify-end bg-[#e2f5d9] px-5 py-5">
-                <div class="max-w-[85%] rounded-[18px_18px_4px_18px] bg-[#dcf8c6] px-4 py-3 text-sm shadow-sm">
-                  <p class="italic text-xs leading-relaxed text-[#555]">Add your WhatsApp screenshot here — crop to show message only.</p>
-                  <span class="mt-1 block text-right text-[10px] text-[#8cad6f]">✓✓</span>
-                </div>
-              </div>
-            )}
-            <div class="flex items-center gap-3 border-t border-[var(--color-border)] px-4 py-3">
-              <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)] text-xs font-semibold text-white">
-                {r.name[0]}
-              </div>
-              <div class="min-w-0 flex-1">
-                <p class="truncate text-sm font-medium text-[var(--color-ink)]">{r.name}</p>
-                <p class="text-[11px] text-[var(--color-ink-muted)]">{r.location}</p>
-              </div>
-              <div class="flex shrink-0 gap-0.5">
-                {Array.from({ length: r.stars }).map(() => (
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="var(--color-accent)" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                ))}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  </section>
-
-  <!-- Shop by fabric -->
+  <!-- Shop by fabric (full-width, short tiles) -->
   {
     categories.length > 0 && (
-      <section class="container-content py-16">
-        <div class="mb-8 flex items-end justify-between">
+      <section class="py-16">
+        <div class="container-content mb-8 flex items-end justify-between max-sm:flex-col max-sm:items-center max-sm:gap-2 max-sm:text-center">
           <h2 class="text-2xl sm:text-3xl">Shop by fabric</h2>
           <a
             href="/category/shirting"
@@ -309,11 +240,11 @@ const storyImage = STORY_IMAGE;
             View all
           </a>
         </div>
-        <div class="grid grid-cols-2 gap-5 sm:gap-4 md:grid-cols-3 lg:grid-cols-5">
+        <div class="grid grid-cols-2 gap-2 px-2 sm:grid-cols-3 sm:gap-3 sm:px-3 lg:grid-cols-5">
           {categories.slice(0, 5).map((c) => (
             <a
               href={`/category/${c.slug}`}
-              class="group relative isolate flex aspect-[4/5] flex-col justify-end overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border)] p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-lg)]"
+              class="group relative isolate flex aspect-[16/10] flex-col justify-end overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border)] p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-lg)] sm:aspect-[3/2]"
             >
               <img
                 src={c.image_url ?? CATEGORY_IMAGES[c.slug] ?? fabricFallback(c.slug, { w: 500, h: 625 })}
@@ -366,26 +297,54 @@ const storyImage = STORY_IMAGE;
     )
   }
 
-  <!-- From bolt to bespoke -->
-  <section class="container-content py-16">
-    <div class="mb-10 max-w-lg">
-      <h2 class="text-2xl sm:text-3xl">From bolt to bespoke</h2>
-      <p class="mt-2 text-sm text-[var(--color-ink-muted)]">
-        Buying cloth by the metre, made effortless.
-      </p>
-    </div>
-    <div class="grid gap-px overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-border)] sm:grid-cols-3">
-      {
-        steps.map((step) => (
-          <div class="bg-[var(--color-bg)] p-7">
-            <span class="font-[var(--font-heading)] text-3xl font-semibold text-[var(--color-accent)]">
-              {step.n}
-            </span>
-            <h3 class="mt-3 text-lg font-medium text-[var(--color-ink)]">{step.title}</h3>
-            <p class="mt-2 text-sm leading-relaxed text-[var(--color-ink-muted)]">{step.body}</p>
+  <!-- Customer reviews (WhatsApp screenshots) -->
+  <section class="border-y border-[var(--color-border)] bg-[var(--color-surface)]">
+    <div class="container-content py-16">
+      <div class="mb-10 max-w-lg max-sm:mx-auto max-sm:text-center">
+        <span class="text-xs font-medium uppercase tracking-[0.22em] text-[var(--color-accent)]">Real customers</span>
+        <h2 class="mt-3 text-2xl sm:text-3xl">What they're saying</h2>
+        <p class="mt-2 text-sm text-[var(--color-ink-muted)]">Straight from their WhatsApp — unedited.</p>
+      </div>
+      <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {[
+          { name: 'Priya M.', location: 'Mumbai', stars: 5, img: null },
+          { name: 'Rahul S.', location: 'Bangalore', stars: 5, img: null },
+          { name: 'Anjali K.', location: 'Delhi', stars: 5, img: null },
+        ].map((r) => (
+          <div class="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg)] shadow-[var(--shadow-sm)]">
+            {r.img ? (
+              <img
+                src={r.img}
+                alt={`WhatsApp review from ${r.name}`}
+                loading="lazy"
+                decoding="async"
+                class="w-full rounded-t-[var(--radius-lg)] object-cover"
+              />
+            ) : (
+              <div class="flex min-h-[160px] items-end justify-end bg-[#e2f5d9] px-5 py-5">
+                <div class="max-w-[85%] rounded-[18px_18px_4px_18px] bg-[#dcf8c6] px-4 py-3 text-sm shadow-sm">
+                  <p class="italic text-xs leading-relaxed text-[#555]">Add your WhatsApp screenshot here — crop to show message only.</p>
+                  <span class="mt-1 block text-right text-[10px] text-[#8cad6f]">✓✓</span>
+                </div>
+              </div>
+            )}
+            <div class="flex items-center gap-3 border-t border-[var(--color-border)] px-4 py-3">
+              <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)] text-xs font-semibold text-white">
+                {r.name[0]}
+              </div>
+              <div class="min-w-0 flex-1">
+                <p class="truncate text-sm font-medium text-[var(--color-ink)]">{r.name}</p>
+                <p class="text-[11px] text-[var(--color-ink-muted)]">{r.location}</p>
+              </div>
+              <div class="flex shrink-0 gap-0.5">
+                {Array.from({ length: r.stars }).map(() => (
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="var(--color-accent)" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                ))}
+              </div>
+            </div>
           </div>
-        ))
-      }
+        ))}
+      </div>
     </div>
   </section>
 
@@ -648,7 +607,7 @@ const storyImage = STORY_IMAGE;
     }
   }
 
-  /* ── Mobile: unsquish the hero ── */
+  /* ── Mobile: unsquish + center the hero ── */
   @media (max-width: 767px) {
     /* The overlay cards use negative offsets to hang off the image; on a narrow
        screen they clip and crowd the edges. They're decorative — drop them. */
@@ -665,5 +624,14 @@ const storyImage = STORY_IMAGE;
 
     /* Give the image room and let its glow breathe. */
     .hero-image-wrap { margin-inline: 0.25rem; }
+  }
+
+  @media (max-width: 639px) {
+    /* Center the hero copy column: the intro block, its max-width paragraph,
+       the badge pill and the CTA button row. */
+    .hero-reveal.max-w-xl { margin-inline: auto; text-align: center; }
+    .hero-reveal .max-w-md { margin-inline: auto; }
+    .hero-reveal .badge-pill { margin-inline: auto; }
+    .hero-reveal > .mt-8 { justify-content: center; }
   }
 </style>
