@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { RefreshCw } from 'lucide-react';
 import { settingsApi } from '@/api/settings';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Input } from '@/components/ui/Input';
@@ -52,12 +51,6 @@ export default function SettingsPage() {
     }),
     onSuccess: () => toast.success('Settings saved.'),
     onError: (e) => toast.error(e instanceof HttpError ? e.data.message : 'Save failed.'),
-  });
-
-  const rebuildMut = useMutation({
-    mutationFn: () => settingsApi.rebuildStorefront(),
-    onSuccess: (d) => toast.info(d.message),
-    onError: () => toast.error('Rebuild request failed.'),
   });
 
   if (isLoading) return <div className="flex justify-center pt-20"><Spinner /></div>;
@@ -113,10 +106,6 @@ export default function SettingsPage() {
         {/* Actions */}
         <div className="flex flex-wrap gap-3">
           <Button onClick={() => saveMut.mutate()} loading={saveMut.isPending}>Save settings</Button>
-          <Button variant="secondary" iconLeft={<RefreshCw size={14} />}
-            onClick={() => rebuildMut.mutate()} loading={rebuildMut.isPending}>
-            Rebuild storefront
-          </Button>
         </div>
       </div>
     </div>
