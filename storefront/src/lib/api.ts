@@ -204,17 +204,20 @@ export const api = {
   // ── Customer auth & account ─────────────────────────────────────────────────
 
   customer: {
+    // Backend returns { data: { token, customer } }; normalise to { token, data }.
     register: (body: { name: string; email: string; password: string; password_confirmation: string }) =>
-      post<{ token: string; data: CustomerProfile }>('/auth/register', body),
+      post<{ data: { token: string; customer: CustomerProfile } }>('/auth/register', body)
+        .then((r) => ({ token: r.data.token, data: r.data.customer })),
 
     login: (body: { email: string; password: string }) =>
-      post<{ token: string; data: CustomerProfile }>('/auth/login', body),
+      post<{ data: { token: string; customer: CustomerProfile } }>('/auth/login', body)
+        .then((r) => ({ token: r.data.token, data: r.data.customer })),
 
     logout: (authToken: string) =>
       post<void>('/auth/logout', {}, { authToken }),
 
     me: (authToken: string) =>
-      get<Wrapped<CustomerProfile>>('/account/me', undefined, authToken).then((r) => r.data),
+      get<Wrapped<CustomerProfile>>('/auth/me', undefined, authToken).then((r) => r.data),
 
     orders: (authToken: string, page = 1) =>
       get<Paginated<CustomerOrder>>('/account/orders', { page }, authToken),
@@ -223,7 +226,7 @@ export const api = {
       get<Wrapped<CustomerOrder>>(`/account/orders/${id}`, undefined, authToken).then((r) => r.data),
 
     updateProfile: (authToken: string, body: { name?: string; email?: string }) =>
-      patch<Wrapped<CustomerProfile>>('/account/me', body, { authToken }).then((r) => r.data),
+      patch<Wrapped<CustomerProfile>>('/account/profile', body, { authToken }).then((r) => r.data),
 
     updatePassword: (
       authToken: string,

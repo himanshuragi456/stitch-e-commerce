@@ -281,7 +281,13 @@ export default function AccountPage() {
     setProfile(p);
     const params = new URLSearchParams(window.location.search);
     const next = params.get('next');
-    if (next) window.location.href = next;
+    if (next) {
+      window.location.href = next;
+    } else if (window.location.pathname.startsWith('/account/login')) {
+      // Land on the account dashboard after signing in from the login page.
+      window.location.href = '/account';
+    }
+    // On /account itself the island re-renders in place to the dashboard.
   }
 
   async function logout() {

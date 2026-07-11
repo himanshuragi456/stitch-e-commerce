@@ -1,0 +1,11 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SearchPageIsland from '../components/islands/SearchPage';
+---
+
+<BaseLayout title="Search — Shree Krishna Collection" noindex>
+  <div class="container-content py-10 lg:py-14">
+    <h1 class="mb-8 text-center font-[var(--font-heading)] text-3xl font-semibold">Search fabrics</h1>
+    <SearchPageIsland client:load />
+  </div>
+</BaseLayout>
