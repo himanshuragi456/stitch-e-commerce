@@ -392,7 +392,7 @@ const storyImage = STORY_IMAGE;
     <div class="container-content grid gap-8 py-14 sm:grid-cols-3">
       {
         trustItems.map((item) => (
-          <div class="flex items-start gap-4">
+          <div class="flex flex-col items-center gap-3 text-center sm:flex-row sm:items-start sm:gap-4 sm:text-left">
             <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radius)] bg-[var(--color-bg)] text-[var(--color-primary)] shadow-[var(--shadow-sm)]">
               {item.icon === 'ruler' && (
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.3 8.7 8.7 21.3a1 1 0 0 1-1.4 0l-4.6-4.6a1 1 0 0 1 0-1.4L15.3 2.7a1 1 0 0 1 1.4 0l4.6 4.6a1 1 0 0 1 0 1.4Z"/><path d="m7.5 10.5 2 2"/><path d="m10.5 7.5 2 2"/><path d="m13.5 4.5 2 2"/><path d="m4.5 13.5 2 2"/></svg>
