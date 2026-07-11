@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/auth.store';
 import { useUiStore } from '@/store/ui.store';
 import { authApi } from '@/api/auth';
-import { PublishButton } from './PublishButton';
 
 export function Topbar() {
   const toggle = useUiStore((s) => s.toggleSidebar);
@@ -24,7 +23,6 @@ export function Topbar() {
       </button>
 
       <div className="flex items-center gap-3">
-        <PublishButton />
         <div className="flex items-center gap-2 text-sm">
           <span className="hidden sm:block text-[var(--color-text-muted)]">{staff?.name}</span>
           <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[var(--color-primary)] text-white text-xs font-medium">
