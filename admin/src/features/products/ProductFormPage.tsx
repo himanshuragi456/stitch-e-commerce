@@ -15,7 +15,20 @@ import { formatMoney } from '@/lib/format';
 import { HttpError } from '@/api/client';
 import type { ProductImage } from '@/api/types';
 
-const INTENDED_USES = ['shirt', 'pant', 'suit', 'kurta', 'saree', 'dupatta', 'other'];
+// The product's "intended use" (used for storefront pairing logic) is derived
+// from the chosen category rather than picked separately. Map by category slug;
+// anything unmapped falls back to 'other'.
+const USE_BY_CATEGORY_SLUG: Record<string, string> = {
+  shirting: 'shirt',
+  'trousers-pants': 'pant',
+  suiting: 'suit',
+  'kurta-fabric': 'kurta',
+  'ethnic-festive': 'other',
+};
+
+function intendedUseForCategory(slug: string | undefined): string {
+  return (slug && USE_BY_CATEGORY_SLUG[slug]) || 'other';
+}
 
 interface LengthRow { id?: string; length_metres: number; position: number }
 
@@ -31,7 +44,8 @@ export default function ProductFormPage() {
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
   const [categoryId, setCategoryId] = useState('');
-  const [intendedUse, setIntendedUse] = useState('shirt');
+  // Derived from the selected category (see intendedUseForCategory); not a separate field.
+  const [intendedUse, setIntendedUse] = useState('other');
   const [material, setMaterial] = useState('');
   const [color, setColor] = useState('');
   const [pattern, setPattern] = useState('');
@@ -204,13 +218,13 @@ export default function ProductFormPage() {
               options={catOptions}
               placeholder="Select category"
               value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
-            />
-            <Select
-              label="Intended use"
-              options={INTENDED_USES.map((u) => ({ value: u, label: u.charAt(0).toUpperCase() + u.slice(1) }))}
-              value={intendedUse}
-              onChange={(e) => setIntendedUse(e.target.value)}
+              onChange={(e) => {
+                const cid = e.target.value;
+                setCategoryId(cid);
+                // Derive intended use from the category (drives storefront pairing).
+                const slug = (cats?.data ?? []).find((c) => c.id === cid)?.slug;
+                setIntendedUse(intendedUseForCategory(slug));
+              }}
             />
             <Input label="Material" value={material} onChange={(e) => setMaterial(e.target.value)} />
             <Input label="Color name" value={color} onChange={(e) => setColor(e.target.value)} />

@@ -21,9 +21,10 @@ try {
   ]);
   categories = cats;
   newArrivals = recent.data.slice(0, 8);
-  // Prefer flagged-featured products; fall back to newest if none.
+  // Only show genuinely flagged-featured products. If none are flagged, the
+  // Featured section hides itself (guarded below) — never mislabel non-featured
+  // products as featured via a "newest" fallback.
   featured = featuredRes.data.filter((p) => p.is_featured).slice(0, 4);
-  if (featured.length < 4) featured = featuredRes.data.slice(0, 4);
   settings = publicSettings;
 } catch (err) {
   console.warn('[home] failed to load data:', (err as Error).message);

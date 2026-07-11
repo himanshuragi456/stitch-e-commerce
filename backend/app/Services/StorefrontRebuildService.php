@@ -7,10 +7,23 @@ use Illuminate\Support\Facades\Log;
 
 class StorefrontRebuildService
 {
-    public function trigger(string $reason = 'admin-update'): bool
+    /**
+     * Fire a storefront rebuild.
+     *
+     * @param  bool  $manual  true when a human clicked "Publish changes"; such
+     *                        requests bypass the `auto` gate. Automatic
+     *                        (catalog-edit) triggers only fire when auto is on.
+     */
+    public function trigger(string $reason = 'admin-update', bool $manual = false): bool
     {
         if (! config('skc.rebuild.enabled')) {
             Log::info("Storefront rebuild skipped (disabled): {$reason}");
+
+            return false;
+        }
+
+        if (! $manual && ! config('skc.rebuild.auto')) {
+            Log::info("Storefront rebuild skipped (auto off, use Publish button): {$reason}");
 
             return false;
         }

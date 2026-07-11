@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Enums\IntendedUse;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\AdminProductListResource;
 use App\Http\Resources\PaginatedCollection;
 use App\Http\Resources\ProductDetailResource;
 use App\Http\Resources\ProductImageResource;
@@ -31,19 +32,22 @@ class AdminProductController extends Controller
         $request->validate([
             'search' => ['nullable', 'string', 'max:100'],
             'category' => ['nullable', 'string'],
-            'is_active' => ['nullable', 'boolean'],
+            // Accept the string forms a query param actually carries ("true"/"false"/"1"/"0"),
+            // not just the strict `boolean` rule which rejects "true"/"false".
+            'is_active' => ['nullable', Rule::in(['true', 'false', '1', '0', 1, 0, true, false])],
             'sort' => ['nullable', Rule::in(['newest', 'oldest', 'name_asc', 'price_asc', 'price_desc', 'stock_asc'])],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
         $query = Product::withTrashed()
             ->with(['category', 'primaryImage'])
-            ->when($request->filled('search'), fn ($q) => $q->where('name', 'like', "%{$request->search}%")
+            ->when($request->filled('search'), fn ($q) => $q->where(fn ($sub) => $sub
+                ->where('name', 'like', "%{$request->search}%")
                 ->orWhere('sku', 'like', "%{$request->search}%")
-            )
+            ))
             ->when($request->filled('category'), fn ($q) => $q->whereHas('category', fn ($c) => $c->where('slug', $request->category))
             )
-            ->when($request->has('is_active'), fn ($q) => $q->where('is_active', $request->boolean('is_active'))
+            ->when($request->has('is_active') && $request->input('is_active') !== '', fn ($q) => $q->where('is_active', $request->boolean('is_active'))
             );
 
         match ($request->input('sort', 'newest')) {
@@ -57,7 +61,7 @@ class AdminProductController extends Controller
 
         $perPage = min(max((int) $request->integer('per_page', 20), 1), 100);
 
-        return (new PaginatedCollection($query->paginate($perPage), ProductListResource::class))->response();
+        return (new PaginatedCollection($query->paginate($perPage), AdminProductListResource::class))->response();
     }
 
     /**

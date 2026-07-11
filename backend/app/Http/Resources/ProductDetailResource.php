@@ -20,6 +20,8 @@ class ProductDetailResource extends ProductListResource
             'description' => $this->description,
             'stock_metres' => (string) $this->stock_metres,
             'sku' => $this->sku,
+            // Management fields the admin edit form needs (storefront ignores them).
+            'is_active' => (bool) $this->is_active,
             'images' => ProductImageResource::collection($this->whenLoaded('images')),
             'lengths' => $this->whenLoaded('lengths', fn () => $this->lengths->map(
                 fn ($length) => (new ProductLengthResource($length))

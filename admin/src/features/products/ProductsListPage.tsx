@@ -1,14 +1,13 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { productsApi, type ProductFilters } from '@/api/products';
 import { categoriesApi } from '@/api/categories';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
-import { Badge } from '@/components/ui/Badge';
 import { Pagination } from '@/components/ui/Pagination';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -43,11 +42,18 @@ export default function ProductsListPage() {
     onError: (e) => toast.error(e instanceof HttpError ? e.data.message : 'Delete failed.'),
   });
 
+  const [togglingId, setTogglingId] = useState<string | null>(null);
   const toggleMut = useMutation({
-    mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) =>
-      productsApi.update(id, { is_active }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-products'] }),
+    mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) => {
+      setTogglingId(id);
+      return productsApi.update(id, { is_active });
+    },
+    onSuccess: (_res, { is_active }) => {
+      qc.invalidateQueries({ queryKey: ['admin-products'] });
+      toast.success(is_active ? 'Product activated.' : 'Product deactivated.');
+    },
     onError: (e) => toast.error(e instanceof HttpError ? e.data.message : 'Update failed.'),
+    onSettled: () => setTogglingId(null),
   });
 
   const catOptions = (cats?.data ?? []).map((c) => ({ value: c.id, label: c.name }));
@@ -148,19 +154,33 @@ export default function ProductsListPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <Badge variant={p.is_active ? 'success' : 'muted'}>
-                        {p.is_active ? 'Active' : 'Inactive'}
-                      </Badge>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={p.is_active}
+                        disabled={togglingId === p.id}
+                        onClick={() => toggleMut.mutate({ id: p.id, is_active: !p.is_active })}
+                        title={p.is_active ? 'Active — click to deactivate' : 'Inactive — click to activate'}
+                        className="inline-flex items-center gap-2 disabled:opacity-50"
+                      >
+                        <span
+                          className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${
+                            p.is_active ? 'bg-[var(--color-success)]' : 'bg-[var(--color-border)]'
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                              p.is_active ? 'translate-x-4' : 'translate-x-0.5'
+                            }`}
+                          />
+                        </span>
+                        <span className={`text-xs font-medium ${p.is_active ? 'text-[var(--color-success)]' : 'text-[var(--color-text-muted)]'}`}>
+                          {p.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </button>
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1 justify-end">
-                        <button
-                          onClick={() => toggleMut.mutate({ id: p.id, is_active: !p.is_active })}
-                          className="p-1.5 rounded text-[var(--color-text-muted)] hover:text-[var(--color-primary)] hover:bg-[var(--color-surface-raised)]"
-                          title={p.is_active ? 'Deactivate' : 'Activate'}
-                        >
-                          {p.is_active ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
-                        </button>
                         <Link
                           to={`/products/${p.id}/edit`}
                           className="p-1.5 rounded text-[var(--color-text-muted)] hover:text-[var(--color-primary)] hover:bg-[var(--color-surface-raised)]"

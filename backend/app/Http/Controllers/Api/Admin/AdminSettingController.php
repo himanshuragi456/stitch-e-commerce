@@ -69,7 +69,7 @@ class AdminSettingController extends Controller
             ], 422);
         }
 
-        $triggered = $this->rebuild->trigger('manual');
+        $triggered = $this->rebuild->trigger('manual', manual: true);
 
         return response()->json([
             'triggered' => $triggered,
