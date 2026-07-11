@@ -118,11 +118,7 @@ const storyImage = STORY_IMAGE;
     <div class="container-content grid items-center gap-10 py-16 lg:grid-cols-2 lg:py-24">
       <!-- Left: copy -->
       <div class="hero-reveal max-w-xl">
-        <span class="badge-pill inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1 text-xs font-medium tracking-wide text-[var(--color-ink-muted)]">
-          <span class="badge-dot h-1.5 w-1.5 rounded-full bg-[var(--color-accent)]"></span>
-          Unstitched · By the metre
-        </span>
-        <h1 class="mt-5 text-[2rem] leading-[1.08] [text-wrap:balance] sm:text-5xl lg:text-[3.4rem]">
+        <h1 class="text-[2rem] leading-[1.08] [text-wrap:balance] sm:text-5xl lg:text-[3.4rem]">
           Cloth worth
           <span class="hero-italic italic text-[var(--color-primary)]">stitching</span> a story around.
         </h1>
@@ -169,8 +165,8 @@ const storyImage = STORY_IMAGE;
         </div>
       </div>
 
-      <!-- Right: image + floating overlay cards -->
-      <div class="hero-reveal hero-reveal-delayed">
+      <!-- Right: image + floating overlay cards (hidden on mobile) -->
+      <div class="hero-reveal hero-reveal-delayed hidden lg:block">
         <div class="hero-image-wrap relative">
           <!-- Glow ring behind image -->
           <div class="hero-glow absolute -inset-6 -z-10 rounded-[28px]" aria-hidden="true"></div>
@@ -240,11 +236,11 @@ const storyImage = STORY_IMAGE;
             View all
           </a>
         </div>
-        <div class="grid grid-cols-2 gap-2 px-2 sm:grid-cols-3 sm:gap-3 sm:px-3 lg:grid-cols-5">
+        <div class="grid grid-cols-1 gap-3 px-4 sm:grid-cols-3 sm:gap-3 sm:px-3 lg:grid-cols-5">
           {categories.slice(0, 5).map((c) => (
             <a
               href={`/category/${c.slug}`}
-              class="group relative isolate flex aspect-[16/10] flex-col justify-end overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border)] p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-lg)] sm:aspect-[3/2]"
+              class="group relative isolate flex aspect-[5/2] flex-col justify-end overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border)] p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-lg)] sm:aspect-[3/2]"
             >
               <img
                 src={c.image_url ?? CATEGORY_IMAGES[c.slug] ?? fabricFallback(c.slug, { w: 500, h: 625 })}
@@ -435,7 +431,7 @@ const storyImage = STORY_IMAGE;
     <div class="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
       {
         promises.map((p) => (
-          <div>
+          <div class="flex flex-col items-center text-center">
             <span class="flex h-11 w-11 items-center justify-center rounded-[var(--radius)] bg-[var(--color-surface)] text-[var(--color-primary)]">
               {p.icon === 'sparkle' && (
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z"/></svg>
@@ -627,11 +623,10 @@ const storyImage = STORY_IMAGE;
   }
 
   @media (max-width: 639px) {
-    /* Center the hero copy column: the intro block, its max-width paragraph,
-       the badge pill and the CTA button row. */
+    /* Center the hero copy column: the intro block, its max-width paragraph
+       and the CTA button row. */
     .hero-reveal.max-w-xl { margin-inline: auto; text-align: center; }
     .hero-reveal .max-w-md { margin-inline: auto; }
-    .hero-reveal .badge-pill { margin-inline: auto; }
     .hero-reveal > .mt-8 { justify-content: center; }
   }
 </style>

@@ -158,11 +158,6 @@
     main :where(h1, h2, h3, h4, p, .section-intro, blockquote):not(.text-left-mobile) {
       text-align: center;
     }
-    /* Center the flex wrappers that hold hero CTAs / badges so they don't hug
-       the left edge once their text is centered. */
-    main .hero-reveal > .badge-pill {
-      margin-inline: auto;
-    }
   }
 }
 
