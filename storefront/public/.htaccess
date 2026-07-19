@@ -24,4 +24,10 @@
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
   RewriteRule ^order/[^/]+/confirmation/?$ /order/_/confirmation/index.html [L]
+
+  # Same pattern for the logged-in order detail page
+  # (see src/pages/account/orders/[id].astro).
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule ^account/orders/[^/]+/?$ /account/orders/_/index.html [L]
 </IfModule>

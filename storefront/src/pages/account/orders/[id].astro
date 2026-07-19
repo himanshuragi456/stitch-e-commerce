@@ -1,24 +1,22 @@
 ---
 /**
- * This page requires a server adapter (prerender=false) to work as a dynamic route.
- * For the static build, redirect /account/orders/* to /account — order detail is
- * shown inline on the account page by island navigation.
- *
- * To enable this route with SSR, add an adapter (e.g. @astrojs/node) and set
- * `prerender = false` here.
+ * Static build emits ONE shell at /account/orders/_/index.html (see
+ * getStaticPaths below). The server rewrites any /account/orders/{id}
+ * request to that shell (storefront/public/.htaccess), and the island reads
+ * the real id from window.location client-side — Astro.params.id is not
+ * available for arbitrary ids in a static build. Same pattern as
+ * src/pages/order/[id]/confirmation.astro.
  */
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import OrderDetailIsland from '../../../components/islands/OrderDetailPage';
 
 export function getStaticPaths() {
-  return [];
+  return [{ params: { id: '_' } }];
 }
-
-const { id } = Astro.params;
 ---
 
 <BaseLayout title="Order details — Shree Krishna Collection" noindex>
   <div class="container-content py-10 lg:py-16">
-    <OrderDetailIsland orderId={id ?? ''} client:load />
+    <OrderDetailIsland client:load />
   </div>
 </BaseLayout>

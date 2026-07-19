@@ -8,8 +8,12 @@ import { api } from '../../lib/api';
 import { formatPaise } from '../../lib/format';
 import type { CustomerOrder } from '../../lib/types';
 
-interface Props {
-  orderId: string;
+// The static build only emits a single shell page for this route
+// (see src/pages/account/orders/[id].astro) — the real order id lives in
+// the URL the server rewrote here, not in a build-time param.
+function readOrderIdFromUrl(): string {
+  const match = window.location.pathname.match(/\/account\/orders\/([^/]+)\/?$/);
+  return match ? decodeURIComponent(match[1]) : '';
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -22,18 +26,20 @@ const STATUS_COLORS: Record<string, string> = {
   refunded: 'bg-orange-100 text-orange-800',
 };
 
-export default function OrderDetailPage({ orderId }: Props) {
+export default function OrderDetailPage() {
   const authToken = useStore($authToken);
   const [order, setOrder] = useState<CustomerOrder | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!authToken) { window.location.href = '/account'; return; }
+    const orderId = readOrderIdFromUrl();
+    if (!orderId) { setLoading(false); return; }
     api.customer.order(authToken, orderId)
       .then(setOrder)
       .catch(() => setOrder(null))
       .finally(() => setLoading(false));
-  }, [authToken, orderId]);
+  }, [authToken]);
 
   if (loading) return <div className="flex justify-center py-16"><div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--color-border)] border-t-[var(--color-primary)]" /></div>;
 

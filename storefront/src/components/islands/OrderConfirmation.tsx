@@ -135,7 +135,7 @@ export default function OrderConfirmation() {
 
       <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
         {authToken && (
-          <a href="/account/orders" className="btn btn-ghost border border-[var(--color-border)]">View all orders</a>
+          <a href="/account" className="btn btn-ghost border border-[var(--color-border)]">View all orders</a>
         )}
         <a href="/" className="btn btn-primary">Continue shopping</a>
       </div>
