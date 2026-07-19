@@ -123,9 +123,25 @@ export interface ProductQuery {
   per_page?: number;
 }
 
+// categories() and publicSettings() are called from BaseLayout on every single
+// page — at build time that's 30+ pages × 2 calls for identical, non-personalized
+// data, which alone is enough to trip the API's 120/min rate limit partway
+// through a build (the last few pages, usually index.html, silently render with
+// empty chrome data). Module-level memoization collapses each into one request
+// per build process. Safe at runtime too: a browser tab is a fresh module
+// instance per page load, so this never serves stale data across navigations.
+let categoriesCache: Promise<Category[]> | null = null;
+let settingsCache: Promise<PublicSettings> | null = null;
+
 export const api = {
-  categories: (tree = false) =>
-    get<{ data: Category[] }>('/categories', tree ? { tree: 1 } : undefined).then((r) => r.data),
+  categories: (tree = false) => {
+    if (tree) {
+      // Tree variant is rarely used and shaped differently — don't cache it.
+      return get<{ data: Category[] }>('/categories', { tree: 1 }).then((r) => r.data);
+    }
+    categoriesCache ??= get<{ data: Category[] }>('/categories').then((r) => r.data);
+    return categoriesCache;
+  },
 
   category: (slug: string) => get<Wrapped<Category>>(`/categories/${slug}`).then((r) => r.data),
 
@@ -137,7 +153,10 @@ export const api = {
   suggestions: (id: string) =>
     get<{ data: ProductListItem[] }>(`/products/${id}/suggestions`).then((r) => r.data),
 
-  publicSettings: () => get<Wrapped<PublicSettings>>('/site-config').then((r) => r.data),
+  publicSettings: () => {
+    settingsCache ??= get<Wrapped<PublicSettings>>('/site-config').then((r) => r.data);
+    return settingsCache;
+  },
 
   // ── Cart ────────────────────────────────────────────────────────────────────
 
