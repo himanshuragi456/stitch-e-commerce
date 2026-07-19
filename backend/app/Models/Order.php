@@ -17,6 +17,7 @@ class Order extends Model
     protected $fillable = [
         'order_number',
         'customer_id',
+        'cart_id',
         'status',
         'subtotal_paise',
         'shipping_paise',
@@ -58,6 +59,12 @@ class Order extends Model
     public function items(): HasMany
     {
         return $this->hasMany(OrderItem::class);
+    }
+
+    /** @return BelongsTo<Cart, Order> */
+    public function cart(): BelongsTo
+    {
+        return $this->belongsTo(Cart::class);
     }
 
     /** @return HasMany<Payment> */

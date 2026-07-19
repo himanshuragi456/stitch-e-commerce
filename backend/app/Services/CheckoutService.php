@@ -137,6 +137,7 @@ class CheckoutService
             $order = Order::create([
                 'order_number' => $this->generateOrderNumber(),
                 'customer_id' => $customer?->id,
+                'cart_id' => $cart->id,
                 'status' => OrderStatus::Pending,
                 'subtotal_paise' => $subtotalPaise,
                 'shipping_paise' => $shippingPaise,
@@ -157,13 +158,12 @@ class CheckoutService
                 OrderItem::create(['order_id' => $order->id, ...$itemData]);
             }
 
-            // Clear the cart — the order now owns the reserved stock.
-            $cart->items()->delete();
-
             if ($paymentMethod === 'cod') {
-                // Cash on delivery: no gateway. The order is placed immediately as
-                // pending/unpaid; the team collects on delivery. Record a payment
-                // row so admin/refund flows have something to reference.
+                // Cash on delivery: order is confirmed immediately (no gateway),
+                // so it's safe to clear the cart now — the order now owns the
+                // reserved stock.
+                $cart->items()->delete();
+
                 Payment::create([
                     'order_id' => $order->id,
                     'gateway' => 'cod',
@@ -177,6 +177,10 @@ class CheckoutService
             }
 
             // --- Online payment: create a Razorpay order ---
+            // Cart is intentionally left intact here — the customer hasn't paid
+            // yet (they may dismiss the Razorpay dialog or the payment may
+            // fail). It's cleared in verifyPayment() / the payment.captured
+            // webhook once payment is actually confirmed.
             $gatewayPayload = $this->gateway->createOrder($order);
 
             // Store the gateway order ID for later verification.
@@ -233,6 +237,10 @@ class CheckoutService
                 'payment_status' => PaymentStatus::Paid,
             ]);
 
+            if ($order->cart_id) {
+                Cart::whereKey($order->cart_id)->first()?->items()->delete();
+            }
+
             $this->sendConfirmationEmail($order->load('items'));
 
             return $order->load('items');
@@ -282,6 +290,10 @@ class CheckoutService
                     'status' => OrderStatus::Paid,
                     'payment_status' => PaymentStatus::Paid,
                 ]);
+
+                if ($order->cart_id) {
+                    Cart::whereKey($order->cart_id)->first()?->items()->delete();
+                }
 
                 $this->sendConfirmationEmail($order->load('items'));
             });
