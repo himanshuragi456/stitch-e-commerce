@@ -10,17 +10,25 @@ import { readLastOrder } from '../../lib/cart';
 import { formatPaise } from '../../lib/format';
 import type { CustomerOrder } from '../../lib/types';
 
-interface Props {
-  orderId: string;
+// The static build only emits a single shell page for this route
+// (see src/pages/order/[id]/confirmation.astro) — the real order id lives
+// in the URL the server rewrote here, not in a build-time param.
+function readOrderIdFromUrl(): string {
+  const match = window.location.pathname.match(/\/order\/([^/]+)\/confirmation\/?$/);
+  return match ? decodeURIComponent(match[1]) : '';
 }
 
-export default function OrderConfirmation({ orderId }: Props) {
+export default function OrderConfirmation() {
   const authToken = useStore($authToken);
   const [order, setOrder] = useState<CustomerOrder | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!orderId) return;
+    const orderId = readOrderIdFromUrl();
+    if (!orderId) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
 
     // Logged-in customers can read the order directly. Guests have no token, so
@@ -38,7 +46,7 @@ export default function OrderConfirmation({ orderId }: Props) {
       .then(setOrder)
       .catch(() => setOrder(null))
       .finally(() => setLoading(false));
-  }, [orderId, authToken]);
+  }, [authToken]);
 
   if (loading) {
     return (

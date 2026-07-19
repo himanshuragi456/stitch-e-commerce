@@ -1,16 +1,21 @@
 ---
+/**
+ * Static build emits ONE shell at /order/_/confirmation/index.html (see
+ * getStaticPaths below). The server rewrites any /order/{id}/confirmation
+ * request to that shell (storefront/public/.htaccess), and the island reads
+ * the real id from window.location client-side — Astro.params.id is not
+ * available for arbitrary ids in a static build.
+ */
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import OrderConfirmation from '../../../components/islands/OrderConfirmation';
 
 export function getStaticPaths() {
-  return [];
+  return [{ params: { id: '_' } }];
 }
-
-const { id } = Astro.params;
 ---
 
 <BaseLayout title="Order confirmed — Shree Krishna Collection" noindex>
   <div class="container-content py-10 lg:py-16">
-    <OrderConfirmation orderId={id ?? ''} client:load />
+    <OrderConfirmation client:load />
   </div>
 </BaseLayout>
