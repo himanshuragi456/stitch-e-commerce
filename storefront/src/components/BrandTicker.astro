@@ -3,9 +3,8 @@
 // logos. Each logo is imported as a bundled asset (SVG passes through, PNG gets a
 // hashed URL) so it ships with the static build — no external requests at runtime.
 // The logos come from mixed sources (different colors, backgrounds, aspect ratios),
-// so we normalize them: fixed height, grayscale + reduced opacity by default, and
-// full color on hover. The track is duplicated once so the CSS translate(-50%)
-// loop is seamless.
+// so we normalize them to a fixed height and show them in full color. The track
+// is duplicated once so the CSS translate(-50%) loop is seamless.
 import monti from '../assets/brands/monti.png';
 import luthai from '../assets/brands/luthai.png';
 import jhampstead from '../assets/brands/jhampstead.png';
@@ -123,10 +122,6 @@ const track = [...brands, ...brands];
     width: auto;
     max-width: 220px;
     object-fit: contain;
-    /* Desaturate + dim so multi-colored logos read as one calm set; color on hover. */
-    filter: grayscale(1);
-    opacity: 0.55;
-    transition: filter 200ms ease, opacity 200ms ease;
   }
 
   @media (min-width: 640px) {
@@ -142,24 +137,14 @@ const track = [...brands, ...brands];
     mix-blend-mode: multiply;
   }
 
-  /* Baruche: a white-fill logo (invisible on a light bg). Invert to black.
-     grayscale first keeps it consistent with the rest of the row. */
+  /* Baruche: a white-fill logo (invisible on a light bg). Invert to black. */
   .brand-logo.is-invert {
-    filter: grayscale(1) invert(1);
+    filter: invert(1);
   }
 
-  /* Pause + spotlight the hovered logo. */
+  /* Pause the marquee on hover so a logo can be read. */
   .brand-ticker:hover .ticker-track {
     animation-play-state: paused;
-  }
-  .ticker-item:hover .brand-logo {
-    filter: grayscale(0);
-    opacity: 1;
-  }
-  /* Keep the inverted logo black on hover (don't un-invert it). */
-  .ticker-item:hover .brand-logo.is-invert {
-    filter: grayscale(0) invert(1);
-    opacity: 1;
   }
 
   @keyframes ticker-scroll {
