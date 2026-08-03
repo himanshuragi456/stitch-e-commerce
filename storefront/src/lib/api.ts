@@ -5,6 +5,7 @@ import type {
   Cart,
   Category,
   CheckoutResult,
+  CouponValidation,
   CustomerOrder,
   CustomerProfile,
   Paginated,
@@ -180,13 +181,17 @@ export const api = {
 
     removeItem: (cartToken: string, itemId: string) =>
       del<Wrapped<Cart>>(`/cart/items/${itemId}`, { cartToken }),
-
-    applyCoupon: (cartToken: string, code: string) =>
-      post<Wrapped<Cart>>('/cart/coupon', { code }, { cartToken }),
-
-    removeCoupon: (cartToken: string) =>
-      del<Wrapped<Cart>>('/cart/coupon', { cartToken }),
   },
+
+  /**
+   * Validate a coupon against the current cart subtotal. There is no
+   * "apply coupon to cart" endpoint — the discount is only actually applied
+   * when the code is passed to POST /checkout, so the cart shows a preview
+   * and stashes the code for the checkout form.
+   */
+  validateCoupon: (code: string, cartToken: string) =>
+    post<Wrapped<CouponValidation>>('/coupons/validate', { code, cart_token: cartToken })
+      .then((r) => r.data),
 
   // ── Checkout ────────────────────────────────────────────────────────────────
 
@@ -206,6 +211,7 @@ export const api = {
           phone: string;
         };
         payment_method: PaymentMethod;
+        coupon_code?: string;
         notes?: string;
       },
       authToken?: string | null

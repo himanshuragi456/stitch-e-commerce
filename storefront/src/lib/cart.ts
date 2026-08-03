@@ -30,6 +30,17 @@ export function ensureCartToken(): string {
   return token;
 }
 
+/**
+ * Coupon code the shopper validated on the cart page. The backend has no
+ * "apply coupon to cart" endpoint — the discount is only realised when the
+ * code is submitted with POST /checkout — so we carry it across the
+ * cart → checkout hop here.
+ */
+export const $couponCode = persistentAtom<string>('skc_coupon_code', '', {
+  encode: String,
+  decode: String,
+});
+
 export function setCartCount(count: number) {
   $cartCount.set(String(count));
 }
@@ -37,6 +48,7 @@ export function setCartCount(count: number) {
 export function clearCart() {
   $cartToken.set('');
   $cartCount.set('0');
+  $couponCode.set('');
 }
 
 /**

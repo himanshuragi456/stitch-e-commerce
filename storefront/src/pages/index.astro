@@ -37,6 +37,9 @@ const styleVideo = settings?.style_video;
 
 // Curated bespoke-tailoring hero (real fabric photography).
 const heroSrc = heroImage();
+// Mobile gets a landscape banner crop of the same shot — the 4:5 portrait used
+// on desktop would eat most of a phone screen before any copy is visible.
+const heroSrcMobile = heroImage({ w: 900, h: 620 });
 
 const orgJsonLd = {
   '@context': 'https://schema.org',
@@ -119,6 +122,32 @@ const storyImage = STORY_IMAGE;
     </svg>
 
     <div class="container-content grid items-center gap-10 py-16 lg:grid-cols-2 lg:py-24">
+      <!-- Mobile banner: the desktop layout puts the photo in a second column,
+           which is hidden below lg — without this, phones get no imagery. -->
+      <div class="hero-banner hero-reveal lg:hidden">
+        <!-- <picture> with an empty large-screen source so desktop never fetches
+             the banner crop; the desktop portrait below does the reverse. -->
+        <picture>
+          <source media="(min-width: 1024px)" srcset="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" />
+          <img
+            src={heroSrcMobile}
+            alt="Bespoke blue and white polka-dot fabric tailored into a blazer"
+            width="900"
+            height="620"
+            loading="eager"
+            fetchpriority="high"
+            class="h-full w-full rounded-[18px] object-cover"
+          />
+        </picture>
+        <div class="hero-banner-caption">
+          <span class="relative flex h-2 w-2">
+            <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--color-accent)] opacity-60"></span>
+            <span class="relative inline-flex h-2 w-2 rounded-full bg-[var(--color-accent)]"></span>
+          </span>
+          New arrivals weekly
+        </div>
+      </div>
+
       <!-- Left: copy -->
       <div class="hero-reveal max-w-xl">
         <h1 class="text-[2rem] leading-[1.08] [text-wrap:balance] sm:text-5xl lg:text-[3.4rem]">
@@ -174,15 +203,20 @@ const storyImage = STORY_IMAGE;
           <!-- Glow ring behind image -->
           <div class="hero-glow absolute -inset-6 -z-10 rounded-[28px]" aria-hidden="true"></div>
 
-          <img
-            src={heroSrc}
-            alt="Bespoke blue and white polka-dot fabric tailored into a blazer"
-            width="640"
-            height="800"
-            loading="eager"
-            fetchpriority="high"
-            class="hero-img aspect-[4/5] w-full rounded-[20px] object-cover shadow-[0_24px_64px_-8px_rgba(30,58,95,0.22)]"
-          />
+          <!-- Empty small-screen source: phones show the banner crop above and
+               must not also download this 4:5 portrait. -->
+          <picture>
+            <source media="(max-width: 1023px)" srcset="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" />
+            <img
+              src={heroSrc}
+              alt="Bespoke blue and white polka-dot fabric tailored into a blazer"
+              width="640"
+              height="800"
+              loading="eager"
+              fetchpriority="high"
+              class="hero-img aspect-[4/5] w-full rounded-[20px] object-cover shadow-[0_24px_64px_-8px_rgba(30,58,95,0.22)]"
+            />
+          </picture>
 
           <!-- Floating card: "New arrival" badge top-left -->
           <div class="float-overlay float-overlay-1 absolute -left-6 top-8 flex items-center gap-2.5 rounded-2xl border border-[var(--color-border)] bg-white px-4 py-2.5 shadow-[0_8px_32px_rgba(0,0,0,0.12)]">
@@ -588,7 +622,8 @@ const storyImage = STORY_IMAGE;
   /* ── Reduced motion ── */
   @media (prefers-reduced-motion: reduce) {
     .hero-reveal, .badge-pill, .hero-italic, .hero-cta-primary,
-    .float-card, .float-overlay, .hero-img {
+    .float-card, .float-overlay, .hero-img,
+    .hero-banner, .hero-banner-caption .animate-ping {
       animation: none;
     }
     .hero-italic {
@@ -597,20 +632,45 @@ const storyImage = STORY_IMAGE;
     }
   }
 
+  /* ── Mobile hero banner ── */
+  .hero-banner {
+    position: relative;
+    aspect-ratio: 3 / 2;
+    overflow: hidden;
+    border-radius: 18px;
+    box-shadow: 0 16px 40px -12px rgba(30, 58, 95, 0.28);
+  }
+  /* Keep the caption legible over whatever part of the photo sits behind it. */
+  .hero-banner::after {
+    content: '';
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 45%;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.5), transparent);
+    pointer-events: none;
+  }
+  .hero-banner-caption {
+    position: absolute;
+    left: 0.875rem;
+    bottom: 0.875rem;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.92);
+    padding: 0.4rem 0.75rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--color-ink);
+    backdrop-filter: blur(4px);
+  }
+
   /* ── Mobile: unsquish + center the hero ── */
   @media (max-width: 767px) {
     /* The overlay cards use negative offsets to hang off the image; on a narrow
        screen they clip and crowd the edges. They're decorative — drop them. */
     .float-overlay { display: none; }
-
-    /* Stack the three stat cards full-width instead of wrapping into a cramped
-       cluster. */
-    .hero-stats {
-      flex-direction: column;
-      align-items: stretch;
-      gap: 0.625rem;
-    }
-    .hero-stats .float-card { width: 100%; }
 
     /* Give the image room and let its glow breathe. */
     .hero-image-wrap { margin-inline: 0.25rem; }
@@ -621,6 +681,68 @@ const storyImage = STORY_IMAGE;
        and the CTA button row. */
     .hero-reveal.max-w-xl { margin-inline: auto; text-align: center; }
     .hero-reveal .max-w-md { margin-inline: auto; }
-    .hero-reveal > .mt-8 { justify-content: center; }
+
+    /* Tighten the vertical rhythm — full-bleed stacked cards pushed everything
+       below the fold. Trim the section padding and the gaps between blocks. */
+    .hero-section .container-content {
+      padding-block: 1.5rem 2.75rem;
+      gap: 1.5rem;
+    }
+    .hero-reveal > .mt-5 { margin-top: 0.875rem; }
+
+    /* Three stat cards side by side in one compact row instead of three
+       full-width bars. Icon stacks above the label so each fits a ~1/3 column. */
+    .hero-stats {
+      margin-top: 1.75rem;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.5rem;
+    }
+    .hero-stats .float-card {
+      width: 100%;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 0.5rem;
+      padding: 0.75rem 0.5rem;
+      text-align: center;
+    }
+    .hero-stats .float-card > span {
+      height: 2rem;
+      width: 2rem;
+    }
+    .hero-stats .float-card > span > svg {
+      height: 15px;
+      width: 15px;
+    }
+    /* Label above value, both scaled down to survive a ~105px-wide column. */
+    .hero-stats .float-card p:first-child {
+      font-size: 0.625rem;
+      line-height: 1.25;
+    }
+    .hero-stats .float-card p:last-child {
+      font-size: 0.75rem;
+      line-height: 1.3;
+      margin-top: 0.125rem;
+    }
+
+    /* The CTAs read as the primary action — make them equal-width and full
+       row, matching the boxed treatment in the reference. */
+    .hero-reveal > .mt-8 {
+      margin-top: 1.25rem;
+      justify-content: center;
+      gap: 0.625rem;
+    }
+    .hero-reveal > .mt-8 > .btn {
+      flex: 1 1 0;
+      min-width: 0;
+      justify-content: center;
+    }
+  }
+
+  /* Very narrow phones: 3 columns get too tight for the longer labels. */
+  @media (max-width: 359px) {
+    .hero-stats { grid-template-columns: repeat(2, 1fr); }
+    .hero-stats .float-card-3 { grid-column: span 2; }
   }
 </style>

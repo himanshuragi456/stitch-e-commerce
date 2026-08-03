@@ -104,28 +104,43 @@ export interface Wrapped<T> {
 
 // ── Cart ──────────────────────────────────────────────────────────────────────
 
+/** Product summary nested inside a cart line (see CartItemResource). */
+export interface CartItemProduct {
+  id: string;
+  name: string;
+  slug: string;
+  price_per_metre_paise: number;
+  primary_image: { thumb_url: string; alt: string | null } | null;
+}
+
 export interface CartItem {
   id: string;
-  product_id: string;
-  product_name: string;
-  product_slug: string;
-  primary_image_url: string | null;
+  quantity: number;
   length_metres: string;
   unit_price_paise: number;
-  quantity: number;
   line_total_paise: number;
+  /** False when the product went inactive or out of stock after being added. */
+  available: boolean;
+  /** Null if the product was hard-deleted since it was added. */
+  product: CartItemProduct | null;
 }
 
 export interface Cart {
-  token: string;
+  id: string | null;
+  token: string | null;
   items: CartItem[];
   subtotal_paise: number;
   discount_paise: number;
   shipping_paise: number;
   total_paise: number;
-  coupon_code: string | null;
-  coupon_discount_label: string | null;
   item_count: number;
+}
+
+/** Response of POST /coupons/validate. Coupons are applied at checkout, not on the cart. */
+export interface CouponValidation {
+  valid: boolean;
+  discount_paise: number;
+  message: string;
 }
 
 // ── Customer / Account ────────────────────────────────────────────────────────

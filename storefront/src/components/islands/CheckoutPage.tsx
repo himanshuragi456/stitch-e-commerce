@@ -4,7 +4,7 @@
  */
 import { useEffect, useState, useCallback } from 'react';
 import { useStore } from '@nanostores/react';
-import { $cartToken, clearCart, stashLastOrder } from '../../lib/cart';
+import { $cartToken, $couponCode, clearCart, stashLastOrder } from '../../lib/cart';
 import { $authToken, $customer } from '../../lib/auth';
 import { api } from '../../lib/api';
 import { formatPaise } from '../../lib/format';
@@ -82,6 +82,9 @@ export default function CheckoutPage() {
   const token = useStore($cartToken);
   const authToken = useStore($authToken);
   const customer = useStore($customer);
+  // Carried over from the cart page; the backend applies it during POST /checkout.
+  const couponCode = useStore($couponCode);
+  const [couponDiscount, setCouponDiscount] = useState(0);
 
   const [cart, setCart] = useState<Cart | null>(null);
   const [loading, setLoading] = useState(true);
@@ -118,6 +121,23 @@ export default function CheckoutPage() {
   }, [token, authToken]);
 
   useEffect(() => { loadCart(); }, [loadCart]);
+
+  // Show the coupon's effect in the summary. The cart payload never carries a
+  // discount — it's computed server-side when the order is placed — so preview
+  // it here against the current subtotal.
+  useEffect(() => {
+    if (!couponCode || !token || !cart) { setCouponDiscount(0); return; }
+    let cancelled = false;
+    api.validateCoupon(couponCode, token)
+      .then((r) => { if (!cancelled) setCouponDiscount(r.discount_paise); })
+      .catch(() => {
+        if (cancelled) return;
+        // Stale or no longer qualifying — drop it so the order isn't rejected.
+        $couponCode.set('');
+        setCouponDiscount(0);
+      });
+    return () => { cancelled = true; };
+  }, [couponCode, token, cart?.subtotal_paise]);
 
   // Safety net: if the store never hydrates a token (e.g. cart truly empty),
   // stop the spinner after a moment so the empty state can show.
@@ -204,6 +224,7 @@ export default function CheckoutPage() {
             phone: deliveryPhone,
           },
           payment_method: paymentMethod,
+          coupon_code: couponCode || undefined,
           notes: notes || undefined,
         },
         authToken || null
@@ -446,11 +467,13 @@ export default function CheckoutPage() {
         <div className="mb-5 flex flex-col gap-3">
           {cart.items.map((item) => {
             const metres = parseFloat(item.length_metres).toFixed(2).replace(/\.?0+$/, '');
+            const product = item.product;
+            const imgSrc = product?.primary_image?.thumb_url;
             return (
               <div key={item.id} className="flex items-start gap-3 text-sm">
                 <div className="relative shrink-0">
-                  {item.primary_image_url ? (
-                    <img src={item.primary_image_url} alt={item.product_name} className="h-14 w-11 rounded object-cover" />
+                  {imgSrc ? (
+                    <img src={imgSrc} alt={product?.name ?? ''} className="h-14 w-11 rounded object-cover" />
                   ) : (
                     <div className="h-14 w-11 rounded bg-[var(--color-border)]" />
                   )}
@@ -459,7 +482,7 @@ export default function CheckoutPage() {
                   </span>
                 </div>
                 <div className="flex-1">
-                  <p className="font-medium leading-tight">{item.product_name}</p>
+                  <p className="font-medium leading-tight">{product?.name ?? 'Item no longer available'}</p>
                   <p className="text-xs text-[var(--color-ink-muted)]">{metres} m</p>
                 </div>
                 <span className="font-medium">{formatPaise(item.line_total_paise)}</span>
@@ -473,10 +496,10 @@ export default function CheckoutPage() {
             <span className="text-[var(--color-ink-muted)]">Subtotal</span>
             <span>{formatPaise(cart.subtotal_paise)}</span>
           </div>
-          {cart.discount_paise > 0 && (
+          {couponDiscount > 0 && (
             <div className="flex justify-between text-[var(--color-success)]">
-              <span>{cart.coupon_code ? `Coupon (${cart.coupon_code})` : 'Discount'}</span>
-              <span>−{formatPaise(cart.discount_paise)}</span>
+              <span>Coupon ({couponCode})</span>
+              <span>−{formatPaise(couponDiscount)}</span>
             </div>
           )}
           <div className="flex justify-between">
@@ -485,7 +508,7 @@ export default function CheckoutPage() {
           </div>
           <div className="mt-2 flex justify-between border-t border-[var(--color-border)] pt-2 text-base font-semibold">
             <span>Total</span>
-            <span>{formatPaise(cart.total_paise)}</span>
+            <span>{formatPaise(Math.max(0, cart.subtotal_paise + cart.shipping_paise - couponDiscount))}</span>
           </div>
         </div>
 
