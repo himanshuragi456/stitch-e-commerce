@@ -1,4 +1,5 @@
 ---
+import { getImage } from 'astro:assets';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import ProductCard from '../components/product/ProductCard.astro';
 import StyleVideo from '../components/StyleVideo.astro';
@@ -6,6 +7,7 @@ import BrandTicker from '../components/BrandTicker.astro';
 import review1 from '../assets/reviews/review-1.jpg';
 import review2 from '../assets/reviews/review-2.jpg';
 import review3 from '../assets/reviews/review-3.jpg';
+import heroMobileImage from '../assets/hero/hero-mobile.jpg';
 import { api } from '../lib/api';
 import { heroImage, fabricFallback, CATEGORY_IMAGES, STORY_IMAGE } from '../lib/images';
 import type { Category, ProductListItem, PublicSettings } from '../lib/types';
@@ -37,9 +39,15 @@ const styleVideo = settings?.style_video;
 
 // Curated bespoke-tailoring hero (real fabric photography).
 const heroSrc = heroImage();
-// Mobile gets a landscape banner crop of the same shot — the 4:5 portrait used
-// on desktop would eat most of a phone screen before any copy is visible.
-const heroSrcMobile = heroImage({ w: 900, h: 620 });
+// Mobile hero banner: resized/compressed landscape crop of the local photo,
+// not the raw multi-megabyte upload.
+const heroMobileOptimized = await getImage({
+  src: heroMobileImage,
+  width: 900,
+  height: 620,
+  format: 'webp',
+  quality: 70,
+});
 
 const orgJsonLd = {
   '@context': 'https://schema.org',
@@ -123,15 +131,17 @@ const storyImage = STORY_IMAGE;
 
     <div class="container-content grid items-center gap-10 py-16 lg:grid-cols-2 lg:py-24">
       <!-- Mobile banner: the desktop layout puts the photo in a second column,
-           which is hidden below lg — without this, phones get no imagery. -->
+           which is hidden below lg — without this, phones get no imagery.
+           Mobile is kept intentionally minimal: image, then the 3 stat boxes,
+           then the buttons — no title/subtitle copy. -->
       <div class="hero-banner hero-reveal lg:hidden">
         <!-- <picture> with an empty large-screen source so desktop never fetches
              the banner crop; the desktop portrait below does the reverse. -->
         <picture>
           <source media="(min-width: 1024px)" srcset="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" />
           <img
-            src={heroSrcMobile}
-            alt="Bespoke blue and white polka-dot fabric tailored into a blazer"
+            src={heroMobileOptimized.src}
+            alt="Bespoke fabric tailored into a garment"
             width="900"
             height="620"
             loading="eager"
@@ -139,17 +149,50 @@ const storyImage = STORY_IMAGE;
             class="h-full w-full rounded-[18px] object-cover"
           />
         </picture>
-        <div class="hero-banner-caption">
-          <span class="relative flex h-2 w-2">
-            <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--color-accent)] opacity-60"></span>
-            <span class="relative inline-flex h-2 w-2 rounded-full bg-[var(--color-accent)]"></span>
-          </span>
-          New arrivals weekly
+      </div>
+
+      <!-- Mobile-only: stat boxes + CTAs, no title/subtitle text. -->
+      <div class="hero-mobile-actions hero-reveal lg:hidden">
+        <div class="hero-stats flex flex-wrap gap-3">
+          <div class="float-card float-card-1 flex items-center gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]/90 px-4 py-3 shadow-[var(--shadow-md)] backdrop-blur-sm">
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--color-accent)]/15 text-[var(--color-accent)]">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.3 8.7 8.7 21.3a1 1 0 0 1-1.4 0l-4.6-4.6a1 1 0 0 1 0-1.4L15.3 2.7a1 1 0 0 1 1.4 0l4.6 4.6a1 1 0 0 1 0 1.4Z"/><path d="m7.5 10.5 2 2"/><path d="m10.5 7.5 2 2"/></svg>
+            </span>
+            <div>
+              <p class="text-[11px] text-[var(--color-ink-muted)]">Price per metre</p>
+              <p class="text-sm font-semibold text-[var(--color-ink)]">From ₹149/m</p>
+            </div>
+          </div>
+
+          <div class="float-card float-card-2 flex items-center gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]/90 px-4 py-3 shadow-[var(--shadow-md)] backdrop-blur-sm">
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--color-primary)]/10 text-[var(--color-primary)]">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/></svg>
+            </span>
+            <div>
+              <p class="text-[11px] text-[var(--color-ink-muted)]">Fabric types</p>
+              <p class="text-sm font-semibold text-[var(--color-ink)]">200+ varieties</p>
+            </div>
+          </div>
+
+          <div class="float-card float-card-3 flex items-center gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]/90 px-4 py-3 shadow-[var(--shadow-md)] backdrop-blur-sm">
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--color-primary)]/10 text-[var(--color-primary)]">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.7 8.9a1 1 0 0 1-.6 0C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.2-2.7a1 1 0 0 1 1.5 0C14.5 3.8 17 5 19 5a1 1 0 0 1 1 1Z"/><path d="m9 12 2 2 4-4"/></svg>
+            </span>
+            <div>
+              <p class="text-[11px] text-[var(--color-ink-muted)]">High quality</p>
+              <p class="text-sm font-semibold text-[var(--color-ink)]">Direct from mill</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-5 flex flex-wrap gap-3">
+          <a href="/category/shirting" class="btn btn-primary hero-cta-primary">Shop the collection</a>
+          <a href="/about" class="btn btn-ghost border border-[var(--color-border)]">Our story</a>
         </div>
       </div>
 
-      <!-- Left: copy -->
-      <div class="hero-reveal max-w-xl">
+      <!-- Left: copy (desktop/tablet only — mobile shows image + boxes + buttons above, no title/subtitle) -->
+      <div class="hero-reveal hidden max-w-xl lg:block">
         <h1 class="text-[2rem] leading-[1.08] [text-wrap:balance] sm:text-5xl lg:text-[3.4rem]">
           Cloth worth
           <span class="hero-italic italic text-[var(--color-primary)]">stitching</span> a story around.
@@ -623,7 +666,7 @@ const storyImage = STORY_IMAGE;
   @media (prefers-reduced-motion: reduce) {
     .hero-reveal, .badge-pill, .hero-italic, .hero-cta-primary,
     .float-card, .float-overlay, .hero-img,
-    .hero-banner, .hero-banner-caption .animate-ping {
+    .hero-banner .animate-ping {
       animation: none;
     }
     .hero-italic {
@@ -640,32 +683,6 @@ const storyImage = STORY_IMAGE;
     border-radius: 18px;
     box-shadow: 0 16px 40px -12px rgba(30, 58, 95, 0.28);
   }
-  /* Keep the caption legible over whatever part of the photo sits behind it. */
-  .hero-banner::after {
-    content: '';
-    position: absolute;
-    inset: auto 0 0 0;
-    height: 45%;
-    background: linear-gradient(to top, rgba(0, 0, 0, 0.5), transparent);
-    pointer-events: none;
-  }
-  .hero-banner-caption {
-    position: absolute;
-    left: 0.875rem;
-    bottom: 0.875rem;
-    z-index: 1;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.92);
-    padding: 0.4rem 0.75rem;
-    font-size: 0.7rem;
-    font-weight: 600;
-    color: var(--color-ink);
-    backdrop-filter: blur(4px);
-  }
-
   /* ── Mobile: unsquish + center the hero ── */
   @media (max-width: 767px) {
     /* The overlay cards use negative offsets to hang off the image; on a narrow
@@ -677,23 +694,19 @@ const storyImage = STORY_IMAGE;
   }
 
   @media (max-width: 639px) {
-    /* Center the hero copy column: the intro block, its max-width paragraph
-       and the CTA button row. */
-    .hero-reveal.max-w-xl { margin-inline: auto; text-align: center; }
-    .hero-reveal .max-w-md { margin-inline: auto; }
-
     /* Tighten the vertical rhythm — full-bleed stacked cards pushed everything
        below the fold. Trim the section padding and the gaps between blocks. */
     .hero-section .container-content {
       padding-block: 1.5rem 2.75rem;
       gap: 1.5rem;
     }
-    .hero-reveal > .mt-5 { margin-top: 0.875rem; }
 
     /* Three stat cards side by side in one compact row instead of three
-       full-width bars. Icon stacks above the label so each fits a ~1/3 column. */
+       full-width bars. Icon stacks above the label so each fits a ~1/3 column.
+       No top margin: the container-content gap already separates this block
+       from the hero image above it. */
     .hero-stats {
-      margin-top: 1.75rem;
+      margin-top: 0;
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 0.5rem;
